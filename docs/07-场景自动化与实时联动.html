@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 · 场景自动化与实时联动</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">07 · Automation</p>
+        <h1>场景自动化与实时联动</h1>
+        <p class="lead">
+          场景是“触发器 + 条件 + 动作序列”的规则，不是一段写死的 if/else。
+          执行器要能逐动作执行、记录状态、失败重试，并把进度实时推给前端。
+        </p>
+        <div class="meta">
+          <span class="chip">Trigger / Condition / Action</span>
+          <span class="chip">状态机</span>
+          <span class="chip">BullMQ / Cron</span>
+          <span class="chip">逐项执行日志</span>
+        </div>
+      </div>
+
+      <h2 id="goals">1. 目标</h2>
+      <ul>
+        <li>支持手动、定时、条件、设备事件四类触发。</li>
+        <li>动作按顺序执行，支持延迟、重试、失败继续/终止策略。</li>
+        <li>每次执行有 run + 逐 action 状态，前端实时可见。</li>
+        <li>新增触发器/动作类型通过策略注册，不改执行器核心。</li>
+        <li>避免循环触发、重复执行、并发冲突。</li>
+      </ul>
+
+      <h2 id="dsl">2. 场景 DSL</h2>
+<pre><span class="k">interface</span> Scene {
+  id: <span class="k">string</span>;
+  homeId: <span class="k">string</span>;
+  name: <span class="k">string</span>;
+  enabled: <span class="k">boolean</span>;
+  triggers: Trigger[];
+  conditions: Condition[];
+  actions: SceneAction[];
+  policy: {
+    onActionError: <span class="c">'continue'</span> | <span class="c">'abort'</span>;
+    maxRetries: <span class="k">number</span>;
+    cooldownSec: <span class="k">number</span>;
+  };
+}
+
+<span class="k">type</span> Trigger =
+  | { type: <span class="c">'manual'</span> }
+  | { type: <span class="c">'schedule'</span>; cron: <span class="k">string</span>; timezone: <span class="k">string</span> }
+  | { type: <span class="c">'condition'</span>; expression: ConditionExpression }
+  | { type: <span class="c">'deviceEvent'</span>; deviceId: <span class="k">string</span>; event: <span class="k">string</span> };
+
+<span class="k">interface</span> SceneAction {
+  id: <span class="k">string</span>;
+  deviceId: <span class="k">string</span>;
+  command: <span class="k">string</span>;
+  params: Record&lt;<span class="k">string</span>, <span class="k">unknown</span>&gt;;
+  delayMs?: <span class="k">number</span>;
+}
+</pre>
+
+      <h2 id="triggers">3. 四类触发器</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>类型</th><th>示例</th><th>实现</th><th>注意</th></tr></thead>
+          <tbody>
+            <tr><td>manual</td><td>点“执行场景”</td><td>REST → 执行器</td><td>幂等键/冷却时间</td></tr>
+            <tr><td>schedule</td><td>每天 20:00 观影</td><td>BullMQ repeat / cron</td><td>时区、夏令时、错过的任务</td></tr>
+            <tr><td>condition</td><td>光线 &lt;30lux 且有人</td><td>遥测/事件流评估</td><td>防抖、持续时间、避免抖动</td></tr>
+            <tr><td>deviceEvent</td><td>门锁打开 → 开灯</td><td>事件总线订阅</td><td>循环触发、事件风暴</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="conditions">4. 条件表达式</h2>
+<pre>{
+  "all": [
+    { "deviceId": "d_light", "metric": "illuminance", "op": "&lt;", "value": 30 },
+    { "deviceId": "d_presence", "metric": "presence", "op": "=", "value": true }
+  ]
+}
+</pre>
+      <p class="small">支持 all/any/not；条件评估在服务端，基于最新设备影子/遥测；可加“持续 N 秒”避免瞬时抖动。</p>
+
+      <h2 id="state">5. 执行状态机</h2>
+      <pre>queued → running → success
+                ↘ partial
+                ↘ failed
+        ↘ cancelled / timeout</pre>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>状态</th><th>含义</th><th>前端</th></tr></thead>
+          <tbody>
+            <tr><td>queued</td><td>已创建，等待执行</td><td>排队中</td></tr>
+            <tr><td>running</td><td>正在逐动作执行</td><td>进度/当前动作</td></tr>
+            <tr><td>success</td><td>全部动作成功</td><td>完成</td></tr>
+            <tr><td>partial</td><td>部分成功（按策略继续）</td><td>成功 N / 失败 M</td></tr>
+            <tr><td>failed</td><td>关键动作失败/策略中止</td><td>失败原因 + 重试</td></tr>
+            <tr><td>cancelled</td><td>用户取消/新执行抢占</td><td>已取消</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="executor">6. 执行器</h2>
+      <ol class="steps">
+        <li><b>创建 run</b>：幂等键、触发来源、操作者；检查冷却/并发。</li>
+        <li><b>评估条件</b>：不满足则记录 skipped，不执行。</li>
+        <li><b>逐动作</b>：发命令 → 等 ack → 更新 action 状态 → 延迟下一个。</li>
+        <li><b>失败策略</b>：continue 记录失败继续；abort 停止并标记 failed。</li>
+        <li><b>汇总</b>：success/partial/failed；写 run 日志；WS 推送。</li>
+        <li><b>通知</b>：可选给家庭成员发消息。</li>
+      </ol>
+
+      <h2 id="examples">7. 三个示例</h2>
+      <div class="grid-3">
+        <div class="card teal">
+          <h3>观影模式</h3>
+          <p class="small">投影仪开、灯关、扫地机关、窗帘关；执行按钮固定在执行区；逐项状态。</p>
+        </div>
+        <div class="card teal">
+          <h3>清洁模式</h3>
+          <p class="small">蒸烤箱/洗碗机/净饮联动；进度/剩余时间；水位不足 5% 停止并提醒。</p>
+        </div>
+        <div class="card teal">
+          <h3>回家模式</h3>
+          <p class="small">门锁事件触发 → 玄关灯开 → 空调 26℃ → 窗帘开 50%；条件：在家/夜间。</p>
+        </div>
+      </div>
+
+      <h2 id="realtime">8. 实时事件</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>事件</th><th>载荷</th><th>用途</th></tr></thead>
+          <tbody>
+            <tr><td>scene.run.started</td><td><code class="inline">{ runId, sceneId, trigger }</code></td><td>前端进入执行态</td></tr>
+            <tr><td>scene.run.updated</td><td><code class="inline">{ runId, status, actions[] }</code></td><td>逐项进度</td></tr>
+            <tr><td>scene.run.finished</td><td><code class="inline">{ runId, status, summary }</code></td><td>完成/失败提示</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="edge">9. 边界与防护</h2>
+      <ul class="small">
+        <li><b>循环触发</b>：场景动作改变设备状态又触发同一场景 → 事件链去重/深度限制。</li>
+        <li><b>并发执行</b>：同一场景默认串行/拒绝；可配置排队。</li>
+        <li><b>冷却时间</b>：手动/条件触发加 cooldownSec，防抖。</li>
+        <li><b>错过定时</b>：服务重启后补跑策略（跳过/补一次）可配置。</li>
+        <li><b>时区</b>：家庭时区，cron 按本地时间；DST 明确策略。</li>
+        <li><b>失败重试</b>：只重试幂等命令；非幂等动作要谨慎。</li>
+        <li><b>权限</b>：执行前校验操作者属于家庭；系统触发用 system actor。</li>
+      </ul>
+
+      <h2 id="extension">10. 扩展方式</h2>
+      <p>新增触发器/动作：</p>
+      <ol class="steps">
+        <li>在 <code class="inline">strategy/trigger</code> 或 <code class="inline">strategy/action</code> 注册处理器。</li>
+        <li>补 config schema 与前端配置表单（后台动态表单）。</li>
+        <li>补契约与执行器测试；不改核心状态机。</li>
+      </ol>
+
+      <h2 id="acceptance">11. 验收</h2>
+      <ul class="checklist">
+        <li>手动执行场景，逐动作状态可见</li>
+        <li>定时触发按家庭时区执行</li>
+        <li>条件触发有防抖/持续判断</li>
+        <li>部分失败标记 partial，原因可查</li>
+        <li>重复执行被冷却/幂等拦截</li>
+        <li>循环触发有深度限制</li>
+        <li>WS 断线重连后能拉取执行结果</li>
+      </ul>
+
+      <div class="page-nav">
+        <a class="prev" href="06-管理后台.html">← 上一份<b>06 · 管理后台</b></a>
+        <a class="next" href="08-设备测试与蓝牙联调.html">下一份<b>08 · 设备测试与蓝牙联调 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>07 · 场景自动化与实时联动</b></span>
+      <span>DSL、触发器、执行器、日志、边界</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

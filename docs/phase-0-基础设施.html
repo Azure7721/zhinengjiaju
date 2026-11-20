@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P0 · 基础设施</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">Phase 0 · Foundation</p>
+        <h1>P0 · 基础设施与工程化</h1>
+        <p class="lead">
+          目标：从“只有设计稿和文档”到“一条命令能启动、能测试、能连数据库、能连 MQTT”的可复现工程。
+          本阶段不写业务页面，只把地基打牢。
+        </p>
+        <div class="meta">
+          <span class="chip">2–3 天</span>
+          <span class="chip">monorepo</span>
+          <span class="chip">CI</span>
+          <span class="chip">DB / MQTT</span>
+          <span class="chip">环境预检</span>
+        </div>
+      </div>
+
+      <h2 id="goal">1. 阶段目标</h2>
+      <ul class="checklist">
+        <li>pnpm workspaces + TypeScript + ESLint/Prettier 可运行</li>
+        <li>PostgreSQL（或兜底 SQLite）+ Prisma 迁移/seed 可重复</li>
+        <li>MQTT（Aedes 或 Mosquitto）可启动、可收发</li>
+        <li>server/admin/miniapp/device-engine 空壳可启动</li>
+        <li>CI 能跑 lint/typecheck/test/build</li>
+        <li>环境记录与降级方案文档化</li>
+      </ul>
+
+      <h2 id="pre">2. 前置条件</h2>
+      <p>无。需要本机 Node 20+、pnpm、Git；微信开发者工具可后装。</p>
+      <div class="callout">
+        <strong>环境探测（当前）：</strong>
+        Node 24.14、pnpm 10.31、npm 11.9、Python 3.13、Git 2.33；Docker 未安装、WSL 未安装，虚拟化已启用。
+        本阶段先解决环境，所有安装/端口/账号记录到 <code class="inline">docs/phase-0-环境记录.md</code>。
+      </div>
+
+      <h2 id="wbs">3. WBS</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>任务</th><th>产出</th></tr></thead>
+          <tbody>
+            <tr><td class="num">D1 上午</td><td>安装/检查 Node、pnpm、Git、VS Code、微信开发者工具；Docker Desktop/WSL2 或降级</td><td>环境预检脚本通过</td></tr>
+            <tr><td class="num">D1 下午</td><td>初始化 pnpm workspaces、tsconfig、eslint、prettier、vitest</td><td>空包可 build</td></tr>
+            <tr><td class="num">D1 晚</td><td>创建 apps/server、admin、miniapp、device-engine 空壳；shared/contracts</td><td>四个进程可启动</td></tr>
+            <tr><td class="num">D2 上午</td><td>PostgreSQL/Redis/MQTT；docker-compose 或本机；Aedes 双协议</td><td>健康检查通过</td></tr>
+            <tr><td class="num">D2 下午</td><td>Prisma schema 初版、迁移、seed；shared 类型/错误码</td><td>数据库可重置</td></tr>
+            <tr><td class="num">D2 晚</td><td>CI：install/lint/typecheck/test/build；脚本 <code class="inline">check-env</code></td><td>CI 绿</td></tr>
+            <tr><td class="num">D3</td><td>README、环境记录、端口表、启动说明；docs 导航</td><td>新人可复现</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="env">4. 环境方案（三级）</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>级别</th><th>方案</th><th>启动</th><th>适用</th></tr></thead>
+          <tbody>
+            <tr><td><b>首选</b></td><td>Docker Desktop + WSL2</td><td><code class="inline">docker compose up -d</code></td><td>PostgreSQL/Redis/Mosquitto 一次起齐</td></tr>
+            <tr><td><b>降级</b></td><td>winget/choco 本机安装</td><td>PostgreSQL 服务、Memurai、Mosquitto</td><td>Docker 不可用</td></tr>
+            <tr><td><b>兜底</b></td><td>SQLite + Aedes + 内存队列</td><td><code class="inline">pnpm dev:lite</code></td><td>只保证流程可跑，不作最终方案</td></tr>
+          </tbody>
+        </table>
+      </div>
+<pre><span class="c"># 环境预检（示意）</span>
+node -v          <span class="c"># ≥ 20</span>
+pnpm -v          <span class="c"># ≥ 9</span>
+git --version
+docker version   <span class="c"># 可选</span>
+python --version <span class="c"># 可选，用于 bleak</span>
+</pre>
+
+      <h2 id="repo">5. 仓库与脚本</h2>
+<pre>smart-home/
+  apps/{miniapp,admin,server,device-engine}/
+  packages/{shared,contracts}/
+  infra/docker-compose.yml
+  docs/
+  scripts/check-env.ts
+  package.json
+  pnpm-workspace.yaml
+  tsconfig.base.json
+</pre>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>脚本</th><th>作用</th></tr></thead>
+          <tbody>
+            <tr><td><code class="inline">pnpm dev</code></td><td>并行启动 server/admin/engine/MQTT（或依赖 compose）</td></tr>
+            <tr><td><code class="inline">pnpm dev:server</code></td><td>只启动 API</td></tr>
+            <tr><td><code class="inline">pnpm dev:mp-weixin</code></td><td>编译小程序到 dist/dev/mp-weixin</td></tr>
+            <tr><td><code class="inline">pnpm db:migrate</code> / <code class="inline">db:seed</code></td><td>迁移/种子</td></tr>
+            <tr><td><code class="inline">pnpm test</code></td><td>单元/集成</td></tr>
+            <tr><td><code class="inline">pnpm check-env</code></td><td>端口/版本/健康检查</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="acceptance">6. 验收标准</h2>
+      <ul class="checklist">
+        <li>全新机器按 README 可安装并启动</li>
+        <li>一条命令起 DB/MQTT/server；健康检查全绿</li>
+        <li>迁移与 seed 可重复执行</li>
+        <li>CI 全绿</li>
+        <li>端口表、环境记录、降级说明完整</li>
+        <li>没有明文密钥入库/入仓</li>
+      </ul>
+
+      <h2 id="risks">7. 风险</h2>
+      <ul class="small">
+        <li>Docker/WSL 安装失败 → 立即切本机；本机也失败 → SQLite/Aedes 兜底，记录限制。</li>
+        <li>端口冲突 → check-env 检测并给出占用进程。</li>
+        <li>Node/依赖版本冲突 → 固定 engines + lockfile。</li>
+        <li>Windows 路径/编码问题 → 统一 UTF-8、forward slash 脚本。</li>
+      </ul>
+
+      <h2 id="next">8. 下一阶段入口</h2>
+      <p>P0 验收通过后进入 <a href="phase-1-账号与数据.html">P1 · 账号与数据</a>：先把登录、家庭、权限跑通。</p>
+
+      <div class="page-nav">
+        <a class="prev" href="09-测试部署与演示.html">← 上一份<b>09 · 测试部署与演示</b></a>
+        <a class="next" href="phase-1-账号与数据.html">下一份<b>P1 · 账号与数据 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>P0 · 基础设施与工程化</b></span>
+      <span>环境、monorepo、数据库、MQTT、CI</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

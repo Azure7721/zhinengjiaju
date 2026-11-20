@@ -1,0 +1,27 @@
+# 可选：Docker 可用时的一键栈（docs/09 · 4.1）
+# 当前机器无 Docker，默认使用 infra/src/mqtt-broker.ts + SQLite 兜底。
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: smart
+      POSTGRES_PASSWORD: smart
+      POSTGRES_DB: smart_home
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+
+volumes:
+  pgdata:

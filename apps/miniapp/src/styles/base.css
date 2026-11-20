@@ -1,0 +1,103 @@
+/* 全局基础样式 */
+page {
+  --primary: #12bfc1;
+  --primary-light: #d8f4f4;
+  --bg: #f2f7f8;
+  --card: #ffffff;
+  --text: #1d2526;
+  --text-2: #6b7a7c;
+  --text-3: #a4b0b2;
+  --border: #e6eef0;
+  --danger: #f5564e;
+  --success: #2fc18c;
+}
+
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.card {
+  background: var(--card);
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 32rpx rgba(29, 37, 38, 0.05);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.muted {
+  color: var(--text-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  background: #eef7f8;
+  color: #4a6a6c;
+}
+
+.chip-primary {
+  background: var(--primary-light);
+  color: #0b8e90;
+}
+
+.chip-warn {
+  background: #fff3e3;
+  color: #d98218;
+}
+
+.chip-danger {
+  background: #ffeceb;
+  color: var(--danger);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+  border-radius: 999rpx;
+  font-size: 30rpx;
+  text-align: center;
+  padding: 24rpx 0;
+}
+
+.btn-primary[disabled] {
+  opacity: 0.55;
+}
+
+.btn-ghost {
+  background: #ffffff;
+  color: var(--primary);
+  border: 2rpx solid var(--primary);
+  border-radius: 999rpx;
+  font-size: 30rpx;
+  text-align: center;
+  padding: 22rpx 0;
+  box-sizing: border-box;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text);
+  margin: 32rpx 0 20rpx;
+}
+
+.empty-inline {
+  text-align: center;
+  color: var(--text-3);
+  padding: 60rpx 0;
+  font-size: 26rpx;
+}

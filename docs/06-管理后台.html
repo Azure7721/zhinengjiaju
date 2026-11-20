@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · 管理后台</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">06 · Admin Console</p>
+        <h1>PC 管理后台</h1>
+        <p class="lead">
+          管理后台不是“再画一套页面”，而是让运营能配置设备型号、管理用户/家庭、查看设备与命令、
+          模拟信号、审计操作。表单与菜单必须能随权限和元数据变化。
+        </p>
+        <div class="meta">
+          <span class="chip">Vue 3 + Element Plus</span>
+          <span class="chip">RBAC</span>
+          <span class="chip">JSON Schema 表单</span>
+          <span class="chip">审计</span>
+          <span class="chip">设备模拟器</span>
+        </div>
+      </div>
+
+      <h2 id="goals">1. 目标</h2>
+      <ul>
+        <li>管理员能登录并只看到有权限的菜单/按钮。</li>
+        <li>能维护设备型号、能力、命令元数据；新增型号后小程序无需改代码。</li>
+        <li>能查用户/家庭/设备/绑定关系，处理解绑/迁移。</li>
+        <li>能看遥测/命令/场景执行/审计日志，定位问题。</li>
+        <li>能通过设备模拟器制造信号、断连、错误，支撑演示与测试。</li>
+      </ul>
+
+      <h2 id="pages">2. 页面地图</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>页面</th><th>核心功能</th><th>权限</th></tr></thead>
+          <tbody>
+            <tr><td>登录</td><td>邮箱/密码、验证码（可选）、失败限流</td><td>公开</td></tr>
+            <tr><td>仪表盘</td><td>用户/家庭/设备数、在线率、命令成功率、场景失败率</td><td>viewer+</td></tr>
+            <tr><td>用户</td><td>列表/搜索/详情/禁用；家庭关系</td><td>support+</td></tr>
+            <tr><td>家庭/住宅/房间</td><td>成员、角色、设备、解绑/迁移</td><td>support+</td></tr>
+            <tr><td>设备型号</td><td>型号、品类、能力、命令、UI schema</td><td>ops+</td></tr>
+            <tr><td>设备库存</td><td>设备实例、serial、绑定、状态、批量导入</td><td>ops+</td></tr>
+            <tr><td>场景模板</td><td>官方模板、触发器/动作、发布/下架</td><td>ops+</td></tr>
+            <tr><td>遥测/命令日志</td><td>按设备/时间筛选、详情、重放（测试）</td><td>support+</td></tr>
+            <tr><td>场景执行日志</td><td>run/action 状态、失败原因</td><td>support+</td></tr>
+            <tr><td>设备模拟器</td><td>新增虚拟设备、发遥测、断连、错误注入</td><td>ops+</td></tr>
+            <tr><td>审计日志</td><td>操作人、资源、前后值、IP、导出</td><td>audit:read</td></tr>
+            <tr><td>系统设置</td><td>开关、限流、保留策略、功能开关</td><td>super_admin</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="rbac">3. 权限与菜单</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>角色</h3>
+          <ul class="small">
+            <li><b>super_admin</b>：全部权限，含管理员/角色。</li>
+            <li><b>ops</b>：型号、库存、场景、模拟器。</li>
+            <li><b>support</b>：用户/家庭/设备只读 + 基础处理。</li>
+            <li><b>viewer</b>：只读仪表盘/日志。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>实现方式</h3>
+          <ul class="small">
+            <li>后端 Guard 校验权限码；前端只负责隐藏。</li>
+            <li>路由 meta 声明权限；菜单由权限树生成。</li>
+            <li>按钮级 <code class="inline">v-permission="'device_model:write'"</code>。</li>
+            <li>所有写操作落审计，含 before/after。</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 id="schema">4. 动态表单（核心扩展点）</h2>
+      <p>设备型号、能力、命令、场景动作都用 JSON Schema 驱动，避免每来一个型号就改后台页面。</p>
+<pre>{
+  "type": "object",
+  "properties": {
+    "key": { "type": "string", "title": "能力标识" },
+    "type": { "type": "string", "enum": ["boolean", "number", "enum"] },
+    "min": { "type": "number", "title": "最小值" },
+    "max": { "type": "number", "title": "最大值" },
+    "unit": { "type": "string", "title": "单位" },
+    "control": { "type": "string", "enum": ["switch", "dial", "slider", "segmented", "remote"] }
+  }
+}
+</pre>
+      <p class="small">新增字段只改 schema + 渲染器，不复制表单；复杂字段（能力列表、命令参数）用子表单/JSON 编辑器。</p>
+
+      <h2 id="model">5. 设备型号编辑器</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>基础信息</h3>
+          <p class="small">型号 code、名称、品类、品牌、图片、状态；code 唯一，发布后不轻易改。</p>
+        </div>
+        <div class="card">
+          <h3>能力与命令</h3>
+          <p class="small">能力列表（key/type/range/control）、命令列表（name/params）、UI schema；保存前做 schema 校验。</p>
+        </div>
+        <div class="card">
+          <h3>发布与版本</h3>
+          <p class="small">草稿/发布/下架；已绑定设备保留旧版本元数据；新增版本不破坏历史数据。</p>
+        </div>
+        <div class="card">
+          <h3>预览</h3>
+          <p class="small">用 schema 渲染一个控制区预览，保存前就能看到小程序会怎么显示。</p>
+        </div>
+      </div>
+
+      <h2 id="inventory">6. 设备库存与绑定</h2>
+      <ul class="small">
+        <li>批量导入 serial/model，生成未绑定设备。</li>
+        <li>查看绑定用户/家庭/房间/时间；支持解绑、迁移、标记故障。</li>
+        <li>解绑需二次确认 + 原因；写审计并通知用户。</li>
+        <li>设备详情展示最近遥测、命令、场景执行、在线状态。</li>
+      </ul>
+
+      <h2 id="simulator">7. 设备模拟器</h2>
+      <div class="flow">
+        <span class="step">选型号</span><span class="sep">→</span>
+        <span class="step">创建虚拟设备</span><span class="sep">→</span>
+        <span class="step">发遥测</span><span class="sep">→</span>
+        <span class="step">模拟断连/错误</span><span class="sep">→</span>
+        <span class="step">观察小程序/日志</span>
+      </div>
+      <p class="small">模拟器调用 <code class="inline">/admin/simulator/*</code>，通过设备引擎发 MQTT/虚拟 BLE，不是直接改前端状态。</p>
+
+      <h2 id="logs">8. 日志与可观测</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>页面</th><th>关键字段</th><th>用途</th></tr></thead>
+          <tbody>
+            <tr><td>遥测日志</td><td>deviceId、ts、metrics、来源</td><td>排查数据异常/延迟</td></tr>
+            <tr><td>命令日志</td><td>cmdId、设备、发起人、状态、耗时、错误</td><td>排查控制失败</td></tr>
+            <tr><td>场景执行</td><td>runId、场景、触发、逐动作状态</td><td>排查联动失败</td></tr>
+            <tr><td>审计</td><td>actor、action、resource、before/after、IP</td><td>合规与追责</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="ux">9. 后台体验与实现</h2>
+      <ul class="small">
+        <li>列表：筛选、分页、排序、列配置、导出；空/加载/错误三态。</li>
+        <li>详情：抽屉/独立页；关联用户、家庭、设备、日志可跳转。</li>
+        <li>危险操作：二次确认 + 输入原因；按钮加载态防重复。</li>
+        <li>响应式：PC 优先，1366 宽可用；不做手机端管理。</li>
+      </ul>
+
+      <h2 id="acceptance">10. 验收</h2>
+      <ul class="checklist">
+        <li>四个角色登录后菜单/按钮不同</li>
+        <li>新增设备型号并发布，小程序无需改代码即可看到</li>
+        <li>动态表单能编辑 capabilities/commands</li>
+        <li>设备库存可查绑定关系并解绑/迁移</li>
+        <li>模拟器能发遥测/断连，前端实时变化</li>
+        <li>遥测/命令/场景/审计日志可筛选</li>
+        <li>越权操作 403，写操作有审计</li>
+      </ul>
+
+      <div class="page-nav">
+        <a class="prev" href="05-小程序用户端.html">← 上一份<b>05 · 小程序用户端</b></a>
+        <a class="next" href="07-场景自动化与实时联动.html">下一份<b>07 · 场景自动化与实时联动 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>06 · 管理后台</b></span>
+      <span>页面、RBAC、动态表单、库存、日志、模拟器</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

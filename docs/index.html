@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全屋智能小程序 · 全阶段开发计划 · 总览</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">Master Plan · 2026-11-11</p>
+        <h1>全屋智能小程序<br>全阶段开发计划</h1>
+        <p class="lead">
+          从设计稿到可演示产品：微信小程序用户端、PC 管理后台、可扩展服务端、
+          模拟设备引擎与真实 BLE 信号链路。本文档集只做计划，不写业务代码。
+        </p>
+        <div class="meta">
+          <span class="chip">6 个阶段</span>
+          <span class="chip">17 份文档</span>
+          <span class="chip">29–39 人日</span>
+          <span class="chip">uni-app + Vue 3</span>
+          <span class="chip amber">T0 单机全虚拟</span>
+          <span class="chip amber">T1 ESP32 BLE</span>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>本阶段边界：</strong>
+        当前只编写开发计划文档。不初始化工程、不安装依赖、不写业务代码、不创建 goal。
+        计划获批并进入开发后，再按 <a href="phase-0-基础设施.html">P0</a> 开始执行。
+      </div>
+
+      <h2 id="phases">六个阶段，一眼看全</h2>
+      <div class="phase-grid">
+        <div class="phase-card">
+          <div class="phase-top"><span class="phase-no">P0</span><span class="badge b-teal">2–3 天</span></div>
+          <h3><a href="phase-0-基础设施.html">基础设施与工程化</a></h3>
+          <p>monorepo、TypeScript、CI、数据库、Docker/本机服务、共享包、文档骨架。</p>
+          <div class="phase-meta">验收：可安装、可启动、可测试、可复现</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-top"><span class="phase-no">P1</span><span class="badge b-teal">4–6 天</span></div>
+          <h3><a href="phase-1-账号与数据.html">账号、家庭与权限</a></h3>
+          <p>微信登录（mock/真实）、管理员 JWT、家庭/成员、RBAC、设备绑定基础表。</p>
+          <div class="phase-meta">验收：登录、家庭、权限闭环</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-top"><span class="phase-no">P2</span><span class="badge b-teal">7–9 天</span></div>
+          <h3><a href="phase-2-设备与场景.html">设备、模拟引擎与场景</a></h3>
+          <p>设备模型/能力、配网、绑定、虚拟 BLE、MQTT/WS、遥测、命令回执、场景执行器。</p>
+          <div class="phase-meta">验收：设备落库并绑定，信号可走通</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-top"><span class="phase-no">P3</span><span class="badge b-teal">6–8 天</span></div>
+          <h3><a href="phase-3-小程序前台.html">小程序用户端</a></h3>
+          <p>登录、首页、全屋、动态设备控制、添加设备、场景、消息、能耗、我的。</p>
+          <div class="phase-meta">验收：核心闭环可演示，3 秒找到运行设备</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-top"><span class="phase-no">P4</span><span class="badge b-teal">5–7 天</span></div>
+          <h3><a href="phase-4-管理后台.html">PC 管理后台</a></h3>
+          <p>仪表盘、用户/家庭、设备型号/能力、库存、场景模板、日志、审计、设备模拟器。</p>
+          <div class="phase-meta">验收：管理员可运营，动态表单可扩展</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-top"><span class="phase-no">P5</span><span class="badge b-amber">5–6 天</span></div>
+          <h3><a href="phase-5-联调与交付.html">联调、测试与交付</a></h3>
+          <p>T0 单机全链路、T1 ESP32 BLE、E2E、安全/性能、Docker/HTTPS、体验版、演示脚本。</p>
+          <div class="phase-meta">验收：端到端通过，可复现交付</div>
+        </div>
+      </div>
+
+      <h2 id="decisions">关键架构决策</h2>
+      <div class="grid-2">
+        <div class="card teal">
+          <h3>元数据驱动，不写死按钮</h3>
+          <p class="small">设备型号、能力、命令 schema 存数据库；小程序按能力动态渲染，未知能力有通用降级。新增设备类型不需要复制页面。</p>
+          <p><a href="01-总体架构与技术选型.html">架构与扩展机制 →</a></p>
+        </div>
+        <div class="card teal">
+          <h3>信号链路：MQTT + WebSocket</h3>
+          <p class="small">设备引擎发 telemetry，服务端订阅落库，WS 推送前端；命令走 REST → MQTT → 设备 → ack。不是前端定时器假动。</p>
+          <p><a href="04-设备引擎与信号适配.html">设备引擎 →</a></p>
+        </div>
+        <div class="card amber">
+          <h3>T0 单机全虚拟，T1 开发板 BLE</h3>
+          <p class="small">一台电脑跑通扫描/连接/配网/绑定/遥测/控制；ESP32 作为 BLE 外设做真实信号验证。两条路径都有验收矩阵。</p>
+          <p><a href="08-设备测试与蓝牙联调.html">设备测试与 BLE 联调 →</a></p>
+        </div>
+        <div class="card amber">
+          <h3>设备添加必须落库并绑定</h3>
+          <p class="small">配网成功后写入 <code class="inline">device</code> / <code class="inline">device_binding</code>，带 <code class="inline">user_id / family_id / home_id / room_id</code>；管理后台可查、可解绑、可迁移。</p>
+          <p><a href="02-数据模型与接口契约.html">数据模型 →</a></p>
+        </div>
+        <div class="card">
+          <h3>空缺入口：A 类新设计，B 类“正在开发中”</h3>
+          <p class="small">设计稿有按钮无页面的入口：必要/设置类按现有 UI 风格新设计最小页面；商城/发现/健康生活等丰富版块点击提示“正在开发中”。无死按钮，计入 P3 验收。</p>
+          <p><a href="00-全阶段开发计划.html#ui-gap">入口处理规则 →</a></p>
+        </div>
+      </div>
+
+      <h2 id="docs">文档地图</h2>
+      <div class="grid-3">
+        <div class="card">
+          <p class="kicker">总览</p>
+          <p><a href="00-全阶段开发计划.html">00 · 全阶段开发计划</a><br>
+          <span class="small muted">范围、阶段、依赖、DoD、风险</span></p>
+        </div>
+        <div class="card">
+          <p class="kicker">架构与规格</p>
+          <p>
+            <a href="01-总体架构与技术选型.html">01 · 总体架构与技术选型</a><br>
+            <a href="02-数据模型与接口契约.html">02 · 数据模型与接口契约</a><br>
+            <a href="03-账号权限与家庭体系.html">03 · 账号权限与家庭体系</a><br>
+            <a href="04-设备引擎与信号适配.html">04 · 设备引擎与信号适配</a>
+          </p>
+        </div>
+        <div class="card">
+          <p class="kicker">产品与测试</p>
+          <p>
+            <a href="05-小程序用户端.html">05 · 小程序用户端</a><br>
+            <a href="06-管理后台.html">06 · 管理后台</a><br>
+            <a href="07-场景自动化与实时联动.html">07 · 场景自动化与实时联动</a><br>
+            <a href="08-设备测试与蓝牙联调.html">08 · 设备测试与蓝牙联调</a><br>
+            <a href="09-测试部署与演示.html">09 · 测试部署与演示</a>
+          </p>
+        </div>
+      </div>
+
+      <h2 id="reading">推荐阅读顺序</h2>
+      <ol class="steps">
+        <li><b>先看全局</b>：<a href="00-全阶段开发计划.html">00 全阶段开发计划</a>，确认范围、阶段目标和工期。</li>
+        <li><b>再看架构</b>：<a href="01-总体架构与技术选型.html">01</a> + <a href="02-数据模型与接口契约.html">02</a>，理解扩展点与数据契约。</li>
+        <li><b>看账号与设备</b>：<a href="03-账号权限与家庭体系.html">03</a> + <a href="04-设备引擎与信号适配.html">04</a>，确认登录、绑定与信号链路。</li>
+        <li><b>看产品实现</b>：<a href="05-小程序用户端.html">05</a> + <a href="06-管理后台.html">06</a> + <a href="07-场景自动化与实时联动.html">07</a>。</li>
+        <li><b>看怎么测</b>：<a href="08-设备测试与蓝牙联调.html">08</a> + <a href="09-测试部署与演示.html">09</a>，尤其是 T0/T1 两条设备路径。</li>
+        <li><b>按阶段执行</b>：从 <a href="phase-0-基础设施.html">P0</a> 到 <a href="phase-5-联调与交付.html">P5</a>，每个阶段都有 WBS 与验收清单。</li>
+      </ol>
+
+      <div class="callout warn">
+        <strong>关于工期：</strong>
+        29–39 人日是按“单人 + AI 辅助、全职投入”估算，不含等待微信 AppID、域名备案、硬件到货的时间。
+        实际以每个阶段的验收清单为准，不以日期为准。
+      </div>
+
+      <div class="page-nav">
+        <a class="prev" href="../开发分析报告.html">← 产品与开发分析报告<b>返回上一份分析</b></a>
+        <a class="next" href="00-全阶段开发计划.html">下一份<b>00 · 全阶段开发计划 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>全屋智能小程序</b> · 全阶段开发计划</span>
+      <span>文档阶段 · 不包含业务代码 · 2026-11-11</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

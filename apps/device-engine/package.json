@@ -1,0 +1,26 @@
+{
+  "name": "@smart-home/device-engine",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "ts-node -T src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0",
+    "@smart-home/contracts": "workspace:*",
+    "@smart-home/shared": "workspace:*",
+    "mqtt": "^5.10.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "prisma": "^6.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

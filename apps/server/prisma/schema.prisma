@@ -1,0 +1,434 @@
+// 数据模型（docs/02 · 核心表）
+// SQLite 兜底：JSON 字段以 String 存储，应用层 parse。
+// 切 PostgreSQL 时将 provider 改为 postgresql 并把 String→Json。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============ 账号 ============
+
+model User {
+  id        String   @id @default(cuid())
+  nickname  String   @default("微信用户")
+  avatar    String?
+  phone     String?
+  status    String   @default("active") // active | disabled
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wechatAccount    WeChatAccount?
+  memberships      FamilyMember[]
+  ownedFamilies    Family[]          @relation("FamilyOwner")
+  bindings         DeviceBinding[]
+  commands         Command[]
+  notifications    Notification[]
+  provisioning     ProvisioningSession[]
+  refreshTokens    RefreshToken[]
+  scenesCreated    Scene[]
+
+  @@map("user")
+}
+
+model WeChatAccount {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  openid         String  @unique
+  unionid        String?
+  sessionKeyHash String? // 不存明文 session_key
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wechat_account")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String?
+  adminId   String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([adminId])
+  @@map("refresh_token")
+}
+
+// ============ 家庭 ============
+
+model Family {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  status    String   @default("active") // active | deleted
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner    User           @relation("FamilyOwner", fields: [ownerId], references: [id])
+  members  FamilyMember[]
+  homes    Home[]
+  invites  FamilyInvite[]
+  devices  DeviceBinding[]
+  scenes   Scene[]
+
+  @@index([ownerId])
+  @@map("family")
+}
+
+model FamilyMember {
+  id       String   @id @default(cuid())
+  familyId String
+  userId   String
+  role     String   @default("member") // owner | admin | member
+  joinedAt DateTime @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+  @@index([userId])
+  @@map("family_member")
+}
+
+model FamilyInvite {
+  id        String   @id @default(cuid())
+  familyId  String
+  code      String   @unique
+  createdBy String
+  expiresAt DateTime
+  usedAt    DateTime?
+  usedBy    String?
+  createdAt DateTime @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@map("family_invite")
+}
+
+model Home {
+  id        String   @id @default(cuid())
+  familyId  String
+  name      String
+  address   String?
+  cover     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  family   Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  rooms    Room[]
+  devices  Device[]
+  scenes   Scene[]
+
+  @@index([familyId])
+  @@map("home")
+}
+
+model Room {
+  id       String @id @default(cuid())
+  homeId   String
+  name     String
+  sort     Int    @default(0)
+  home     Home   @relation(fields: [homeId], references: [id], onDelete: Cascade)
+  devices  Device[]
+
+  @@index([homeId])
+  @@map("room")
+}
+
+// ============ 设备 ============
+
+model DeviceModel {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  category     String
+  brand        String?
+  image        String?
+  status       String   @default("draft") // draft | published | deprecated
+  version      Int      @default(1)
+  metadataJson String   @default("{}") // DeviceModelMetadata JSON
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  devices Device[]
+
+  @@index([category])
+  @@index([status])
+  @@map("device_model")
+}
+
+model Device {
+  id        String   @id @default(cuid())
+  modelId   String
+  homeId    String?
+  roomId    String?
+  name      String
+  serialNo  String   @unique
+  status    String   @default("active") // active | disabled | fault
+  source    String   @default("manual") // ble | qr | manual | admin | sim
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  model    DeviceModel     @relation(fields: [modelId], references: [id])
+  home     Home?           @relation(fields: [homeId], references: [id])
+  room     Room?           @relation(fields: [roomId], references: [id])
+  state    DeviceState?
+  bindings DeviceBinding[]
+  commands Command[]
+  telemetry Telemetry[]
+  sceneActions SceneAction[]
+  sceneTriggers SceneTrigger[]
+
+  @@index([homeId])
+  @@index([modelId])
+  @@map("device")
+}
+
+model DeviceBinding {
+  id        String    @id @default(cuid())
+  deviceId  String
+  userId    String
+  familyId  String
+  homeId    String?
+  roomId    String?
+  source    String    @default("ble")
+  boundAt   DateTime  @default(now())
+  unboundAt DateTime?
+  createdAt DateTime  @default(now())
+
+  device  Device   @relation(fields: [deviceId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  family  Family   @relation(fields: [familyId], references: [id])
+
+  @@index([deviceId])
+  @@index([familyId])
+  @@index([userId])
+  @@map("device_binding")
+}
+
+model DeviceState {
+  deviceId  String   @id
+  online    Boolean  @default(false)
+  stateJson String   @default("{}")
+  updatedAt DateTime @updatedAt
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("device_state")
+}
+
+// ============ 信号 ============
+
+model Telemetry {
+  id          String   @id @default(cuid())
+  deviceId    String
+  ts          DateTime
+  metricsJson String   @default("{}")
+  createdAt   DateTime @default(now())
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, ts(sort: Desc)])
+  @@map("telemetry")
+}
+
+model Command {
+  id           String    @id @default(cuid())
+  deviceId     String
+  userId       String?
+  cmdId        String    @unique
+  capability   String
+  name         String
+  paramsJson   String    @default("{}")
+  status       String    @default("pending") // pending | sent | acked | failed | timeout
+  source       String    @default("api") // api | scene | admin
+  error        String?
+  createdAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  ack          CommandAck?
+
+  device   Device   @relation(fields: [deviceId], references: [id])
+  user     User?    @relation(fields: [userId], references: [id])
+
+  @@index([deviceId, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("command")
+}
+
+model CommandAck {
+  commandId String   @id
+  status    String
+  errorCode String?
+  message   String?
+  ackedAt   DateTime @default(now())
+
+  command Command @relation(fields: [commandId], references: [id], onDelete: Cascade)
+
+  @@map("command_ack")
+}
+
+// ============ 场景 ============
+
+model Scene {
+  id        String   @id @default(cuid())
+  homeId    String
+  familyId  String?
+  name      String
+  cover     String?
+  enabled   Boolean  @default(true)
+  mode      String   @default("custom") // custom | official
+  policyJson String  @default("{}")
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  home     Home           @relation(fields: [homeId], references: [id], onDelete: Cascade)
+  family   Family?        @relation(fields: [familyId], references: [id])
+  creator  User?          @relation(fields: [createdBy], references: [id])
+  triggers SceneTrigger[]
+  actions  SceneAction[]
+  runs     SceneRun[]
+
+  @@index([homeId])
+  @@map("scene")
+}
+
+model SceneTrigger {
+  id          String  @id @default(cuid())
+  sceneId     String
+  type        String // manual | schedule | condition | deviceEvent
+  configJson  String  @default("{}")
+  enabled     Boolean @default(true)
+  deviceId    String?
+
+  scene  Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  device Device? @relation(fields: [deviceId], references: [id])
+
+  @@index([sceneId])
+  @@map("scene_trigger")
+}
+
+model SceneAction {
+  id         String  @id @default(cuid())
+  sceneId    String
+  deviceId   String
+  command    String
+  paramsJson String  @default("{}")
+  delayMs    Int     @default(0)
+  sort       Int     @default(0)
+
+  scene  Scene  @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  device Device @relation(fields: [deviceId], references: [id])
+
+  @@index([sceneId])
+  @@map("scene_action")
+}
+
+model SceneRun {
+  id          String    @id @default(cuid())
+  sceneId     String
+  triggerType String    @default("manual")
+  idempotencyKey String?
+  status      String    @default("queued") // queued|running|success|partial|failed|cancelled|timeout
+  error       String?
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  scene   Scene           @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  actions SceneRunAction[]
+
+  @@index([sceneId, startedAt(sort: Desc)])
+  @@map("scene_run")
+}
+
+model SceneRunAction {
+  id         String    @id @default(cuid())
+  runId      String
+  actionId   String
+  status     String    @default("pending") // pending|running|success|failed|skipped
+  message    String?
+  finishedAt DateTime?
+
+  run SceneRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@map("scene_run_action")
+}
+
+// ============ 运营 ============
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   @default("info") // info | alarm | scene | device
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notification")
+}
+
+model ProvisioningSession {
+  id           String    @id @default(cuid())
+  deviceSerial String
+  userId       String
+  familyId     String?
+  status       String    @default("session_created")
+  tokenHash    String    @unique
+  failReason   String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  finishedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([deviceSerial])
+  @@map("provisioning_session")
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("viewer") // super_admin | ops | support | viewer
+  status       String    @default("active")
+  failCount    Int       @default(0)
+  lockedUntil  DateTime?
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("admin_user")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorType  String // user | admin | system
+  actorId    String?
+  action     String
+  resource   String
+  resourceId String?
+  beforeJson String?
+  afterJson  String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([resource, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_log")
+}

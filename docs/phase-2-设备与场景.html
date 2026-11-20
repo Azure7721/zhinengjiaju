@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P2 · 设备与场景</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">Phase 2 · Device &amp; Automation</p>
+        <h1>P2 · 设备、模拟引擎与场景</h1>
+        <p class="lead">
+          目标：设备可建模、可发现、可配网、可绑定、可控制；信号从引擎/MQTT 来，不靠前端假动；
+          场景能执行并逐项记录。这是整个项目最核心、最难的一段。
+        </p>
+        <div class="meta">
+          <span class="chip">7–9 天</span>
+          <span class="chip">设备模型</span>
+          <span class="chip">虚拟 BLE</span>
+          <span class="chip">MQTT / WS</span>
+          <span class="chip">场景执行器</span>
+        </div>
+      </div>
+
+      <h2 id="goal">1. 阶段目标</h2>
+      <ul class="checklist">
+        <li>设备型号/能力/命令元数据 CRUD</li>
+        <li>设备库存、配网会话、绑定/解绑/迁移</li>
+        <li>设备引擎生成 telemetry，支持命令/ack/故障注入</li>
+        <li>虚拟 BLE 完成扫描/连接/配网</li>
+        <li>MQTT + WebSocket 实时链路</li>
+        <li>场景 DSL、执行器、逐动作状态、run 日志</li>
+        <li>T0 单机全链路通过</li>
+      </ul>
+
+      <h2 id="pre">2. 前置条件</h2>
+      <p><a href="phase-1-账号与数据.html">P1</a> 验收通过：登录、家庭、权限、绑定表可用。</p>
+
+      <h2 id="wbs">3. WBS</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>任务</th><th>产出</th></tr></thead>
+          <tbody>
+            <tr><td class="num">D1–D2</td><td>设备型号/能力/命令 schema；设备库存；元数据校验</td><td>后台可建模</td></tr>
+            <tr><td class="num">D3</td><td>配网会话状态机；绑定/解绑/迁移 API；审计</td><td>绑定落库</td></tr>
+            <tr><td class="num">D4</td><td>虚拟 BLE WebSocket 服务；Adapter 接口；4+1 虚拟设备</td><td>扫描/连接/读写</td></tr>
+            <tr><td class="num">D5</td><td>设备引擎：telemetry 生成、命令消费、ack、故障注入</td><td>信号闭环</td></tr>
+            <tr><td class="num">D6</td><td>MQTT 主题/桥接；WS Gateway；状态/遥测推送</td><td>实时链路</td></tr>
+            <tr><td class="num">D7–D8</td><td>场景 DSL、执行器、调度、run/action 日志</td><td>场景可执行</td></tr>
+            <tr><td class="num">D9</td><td>T0 测试脚本、种子、联调、文档</td><td>T0 可复现</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="device">4. 设备域</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>元数据</h3>
+          <p class="small">device_model.metadata_json 存 capabilities/commands/UI schema；新增型号无需改前端页面。</p>
+        </div>
+        <div class="card">
+          <h3>设备实例</h3>
+          <p class="small">serial 唯一；home/room；状态在 device_state；绑定在 device_binding。</p>
+        </div>
+        <div class="card">
+          <h3>配网</h3>
+          <p class="small">session token 一次性/过期；scan → connect → provision → bind；失败原因可读。</p>
+        </div>
+        <div class="card">
+          <h3>命令</h3>
+          <p class="small">cmdId 幂等；超时重试；ack 落库；WS 推送；越权拒绝。</p>
+        </div>
+      </div>
+
+      <h2 id="signal">5. 信号链路</h2>
+      <div class="arch">
+        <div class="arch-row"><div class="name">device-engine</div><div class="desc">telemetry / command / ack / presence / 故障注入</div></div>
+        <div class="arrow"><b>↕</b>MQTT（Aedes）</div>
+        <div class="arch-row"><div class="name">server</div><div class="desc">订阅、落库、命令下发、WS 推送</div></div>
+        <div class="arrow"><b>↕</b>WebSocket</div>
+        <div class="arch-row"><div class="name">miniapp / admin</div><div class="desc">实时状态、命令结果、场景进度</div></div>
+      </div>
+      <p class="small">虚拟 BLE 与真实 BLE 共用 Adapter 接口；小程序端通过环境变量切换。</p>
+
+      <h2 id="scene">6. 场景执行器</h2>
+      <ul class="small">
+        <li>触发器：manual / schedule / condition / deviceEvent。</li>
+        <li>动作：设备命令 + 延迟 + 失败策略；逐动作状态。</li>
+        <li>run 状态：queued/running/success/partial/failed/cancelled。</li>
+        <li>防循环、冷却、并发控制、幂等。</li>
+      </ul>
+
+      <h2 id="acceptance">7. 验收标准</h2>
+      <ul class="checklist">
+        <li>后台新增型号，小程序无需改代码可见</li>
+        <li>虚拟 BLE 扫描/连接/配网/绑定成功</li>
+        <li>device/device_binding 落库，归属正确</li>
+        <li>telemetry 2s 内 WS 推送并落库</li>
+        <li>命令 1s 内 ack，重复 cmdId 不重复执行</li>
+        <li>场景逐动作状态可见，run 日志完整</li>
+        <li>断连/超时/错误 token 有反馈</li>
+        <li>T0 测试脚本全绿</li>
+      </ul>
+
+      <h2 id="risks">8. 风险</h2>
+      <ul class="small">
+        <li>设备抽象过度 → 先 4 类 + 1 未知能力，按真实需求扩展。</li>
+        <li>配网状态复杂 → 先状态机与失败分支，再优化 UI。</li>
+        <li>MQTT 重复/丢失 → 幂等 + QoS1 + retained 只用于 state/presence。</li>
+        <li>场景循环触发 → 事件链去重/深度限制。</li>
+        <li>硬件未到 → 先 T0，T1 后置。</li>
+      </ul>
+
+      <h2 id="next">9. 下一阶段入口</h2>
+      <p>P2 验收通过后，P3 小程序前台与 P4 管理后台可以并行；以 <a href="phase-3-小程序前台.html">P3</a> 为主。</p>
+
+      <div class="page-nav">
+        <a class="prev" href="phase-1-账号与数据.html">← 上一份<b>P1 · 账号与数据</b></a>
+        <a class="next" href="phase-3-小程序前台.html">下一份<b>P3 · 小程序前台 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>P2 · 设备、模拟引擎与场景</b></span>
+      <span>设备模型、配网、虚拟 BLE、MQTT、场景</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

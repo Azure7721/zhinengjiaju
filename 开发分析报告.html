@@ -1,0 +1,1981 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全屋智能小程序 · 产品与开发分析报告</title>
+<style>
+:root{
+  --teal:#12bfc1;
+  --teal-2:#0fa9ab;
+  --teal-dark:#0b7d80;
+  --deep:#08343c;
+  --ink:#152a30;
+  --muted:#6d818a;
+  --faint:#93a6ad;
+  --line:#e2ebee;
+  --bg:#f2f7f8;
+  --card:#ffffff;
+  --amber:#df9a2f;
+  --red:#d95d5d;
+  --green:#3aa675;
+  --radius:18px;
+  --shadow:0 12px 32px rgba(9,52,60,.07);
+  --shadow-sm:0 4px 14px rgba(9,52,60,.05);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:"PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",Roboto,sans-serif;
+  color:var(--ink);
+  background:var(--bg);
+  line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--teal-dark);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1100px;margin:0 auto;padding:0 22px}
+
+/* ---------- Hero ---------- */
+.hero{
+  position:relative;
+  overflow:hidden;
+  color:#fff;
+  padding:72px 0 54px;
+  background:
+    radial-gradient(900px 420px at 88% -20%, rgba(18,191,193,.50), transparent 62%),
+    radial-gradient(700px 380px at 0% 120%, rgba(18,191,193,.20), transparent 60%),
+    linear-gradient(135deg,#062a31,#0a4a52 55%,#0c7277);
+}
+.hero::after{
+  content:"";
+  position:absolute;
+  right:-8%;bottom:-60%;
+  width:620px;height:620px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow:0 0 0 70px rgba(255,255,255,.035), 0 0 0 150px rgba(255,255,255,.02);
+}
+.eyebrow{
+  font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+  color:#8fe3e3;margin:0 0 16px;font-weight:600;
+}
+.hero h1{
+  margin:0;
+  font-size:46px;
+  line-height:1.22;
+  letter-spacing:-.5px;
+  font-weight:800;
+}
+.hero h1 span{
+  background:linear-gradient(90deg,#b8f3f2,#12bfc1);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.lede{
+  margin:18px 0 0;
+  max-width:720px;
+  color:#cfe9ea;
+  font-size:16px;
+}
+.stats{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+  margin-top:38px;
+  max-width:760px;
+}
+.stat{
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:14px;
+  padding:14px 16px;
+  backdrop-filter:blur(4px);
+}
+.stat b{display:block;font-size:28px;line-height:1.2;color:#fff}
+.stat span{font-size:12px;color:#a9d8da;letter-spacing:.04em}
+
+/* ---------- TOC ---------- */
+.toc{
+  position:sticky;top:0;z-index:30;
+  background:rgba(255,255,255,.95);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.toc .wrap{
+  display:flex;gap:6px;
+  overflow-x:auto;
+  padding:10px 22px;
+  scrollbar-width:none;
+}
+.toc .wrap::-webkit-scrollbar{display:none}
+.toc a{
+  flex:0 0 auto;
+  color:var(--muted);
+  font-size:13px;
+  padding:6px 11px;
+  border-radius:999px;
+  white-space:nowrap;
+}
+.toc a:hover{background:#eef7f7;color:var(--teal-dark);text-decoration:none}
+.toc a.active{background:var(--teal);color:#fff}
+
+/* ---------- Sections ---------- */
+main{padding:14px 0 70px}
+section{padding:38px 0 6px;scroll-margin-top:64px}
+.sec-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:20px}
+.sec-no{
+  flex:0 0 auto;width:40px;height:40px;border-radius:12px;
+  display:grid;place-items:center;font-weight:800;font-size:15px;color:#fff;
+  background:linear-gradient(135deg,#12bfc1,#0a8b8e);
+  box-shadow:0 6px 16px rgba(18,191,193,.28);
+}
+h2{font-size:27px;line-height:1.35;margin:0;letter-spacing:-.2px}
+.sec-sub{margin:4px 0 0;color:var(--muted);font-size:14px}
+h3{font-size:19px;margin:30px 0 10px;letter-spacing:-.1px}
+h4{font-size:15px;margin:20px 0 8px;color:var(--deep)}
+p{margin:10px 0}
+.lead{font-size:16.5px;color:#2b444c}
+
+/* ---------- Cards ---------- */
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:22px;
+  box-shadow:var(--shadow-sm);
+}
+.card + .card{margin-top:14px}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.mt14{margin-top:14px}
+.mt20{margin-top:20px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+/* ---------- Callouts ---------- */
+.note{
+  border-left:4px solid var(--teal);
+  background:#f0fbfb;
+  padding:14px 18px;
+  border-radius:0 12px 12px 0;
+  margin:18px 0;
+}
+.note strong{color:var(--teal-dark)}
+.warn{
+  border-left:4px solid var(--amber);
+  background:#fff9ee;
+  padding:14px 18px;
+  border-radius:0 12px 12px 0;
+  margin:18px 0;
+}
+.warn strong{color:#a56a10}
+.danger{
+  border-left:4px solid var(--red);
+  background:#fff4f4;
+  padding:14px 18px;
+  border-radius:0 12px 12px 0;
+  margin:18px 0;
+}
+.danger strong{color:#a33c3c}
+
+/* ---------- Tables ---------- */
+.table-wrap{
+  overflow-x:auto;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  box-shadow:var(--shadow-sm);
+}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}
+th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid #eef4f5}
+th{
+  background:#f3f9fa;
+  color:#37555e;
+  font-weight:700;
+  font-size:13px;
+  letter-spacing:.02em;
+  white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#fbfefe}
+td b{color:var(--deep)}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ---------- Badges / stars ---------- */
+.badge{
+  display:inline-block;
+  font-size:12px;
+  line-height:1.6;
+  padding:1px 8px;
+  border-radius:999px;
+  font-weight:600;
+  white-space:nowrap;
+}
+.b-must{background:#ffecec;color:#b04242}
+.b-should{background:#e6f7f7;color:#0a7d80}
+.b-later{background:#eef1f3;color:#6b7d85}
+.b-blue{background:#eaf2ff;color:#3b6fb6}
+.b-amber{background:#fff3e0;color:#a66a12}
+.stars{color:var(--teal);letter-spacing:1px;white-space:nowrap;font-size:13px}
+.stars .off{color:#d8e4e7}
+.tag{
+  display:inline-block;font-size:12px;color:var(--muted);
+  background:#f3f7f8;border:1px solid var(--line);
+  border-radius:6px;padding:0 7px;margin-right:6px;
+}
+.kicker{
+  font-size:12px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--teal-dark);
+}
+
+/* ---------- Code ---------- */
+pre{
+  margin:12px 0;
+  background:#0e262c;
+  color:#d6ecee;
+  border-radius:12px;
+  padding:16px 18px;
+  overflow-x:auto;
+  font-size:13px;
+  line-height:1.65;
+  font-family:"Cascadia Code",Consolas,"Courier New",monospace;
+}
+pre .c{color:#7fa3a8}
+pre .k{color:#7fdede}
+code.inline{
+  background:#eef6f7;border:1px solid #dfecee;border-radius:5px;
+  padding:1px 5px;font-size:.92em;color:#0b6b6e;
+  font-family:"Cascadia Code",Consolas,monospace;
+}
+
+/* ---------- Gallery ---------- */
+.gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.shot{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:var(--shadow-sm);
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.shot:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.shot a{display:block;background:#eef3f4}
+.shot img{
+  display:block;width:100%;height:265px;
+  object-fit:cover;object-position:top center;
+}
+.shot .cap{padding:9px 11px;font-size:12.5px;line-height:1.5}
+.shot .cap b{display:block;font-size:13px;color:var(--deep)}
+.shot .cap span{color:var(--faint);font-size:11.5px}
+
+/* ---------- Difficulty cards ---------- */
+.diff{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:20px;
+  box-shadow:var(--shadow-sm);
+  border-top:3px solid var(--teal);
+}
+.diff.hard{border-top-color:var(--red)}
+.diff.mid{border-top-color:var(--amber)}
+.diff h4{margin:0 0 6px;font-size:16px}
+.diff .why{font-size:13.5px;color:var(--muted)}
+.diff .do{font-size:13.5px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.diff .do b{color:var(--teal-dark)}
+
+/* ---------- Checklist ---------- */
+.check{
+  list-style:none;padding:0;margin:12px 0;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px;
+}
+.check li{
+  position:relative;padding-left:26px;font-size:14px;color:#334b52;
+}
+.check li::before{
+  content:"";
+  position:absolute;left:0;top:5px;
+  width:14px;height:14px;border-radius:4px;
+  border:1.6px solid var(--teal);
+  background:#f2fcfc;
+}
+.check li::after{
+  content:"✓";position:absolute;left:2.5px;top:-2px;
+  color:var(--teal-dark);font-size:13px;font-weight:700;
+}
+
+/* ---------- Architecture ---------- */
+.arch{
+  background:linear-gradient(180deg,#fbfefe,#f4fafa);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:24px;
+}
+.arch-layer{
+  background:#fff;border:1px solid #dcebed;border-radius:12px;
+  padding:14px 18px;box-shadow:var(--shadow-sm);
+}
+.arch-layer .name{font-weight:700;color:var(--deep);font-size:14px}
+.arch-layer .desc{font-size:12.5px;color:var(--muted);margin-top:2px}
+.arch-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.arrow{
+  text-align:center;color:#9fc3c6;font-size:13px;
+  padding:8px 0;letter-spacing:.05em;
+}
+.arrow b{display:block;font-size:17px;line-height:1}
+
+/* ---------- Timeline ---------- */
+.timeline{position:relative;margin:18px 0 6px;padding-left:24px}
+.timeline::before{
+  content:"";position:absolute;left:7px;top:6px;bottom:6px;
+  width:2px;background:linear-gradient(180deg,var(--teal),#d9ecee);
+}
+.tl{position:relative;padding:0 0 16px 8px}
+.tl::before{
+  content:"";position:absolute;left:-22px;top:7px;
+  width:12px;height:12px;border-radius:50%;
+  background:#fff;border:3px solid var(--teal);
+  box-shadow:0 0 0 3px #eafafa;
+}
+.tl b{font-size:14px;color:var(--deep)}
+.tl p{margin:2px 0 0;font-size:13.5px;color:var(--muted)}
+
+/* ---------- New: metrics ---------- */
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.metric{
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:16px 16px 14px;box-shadow:var(--shadow-sm);
+}
+.metric .value{font-size:25px;font-weight:800;color:var(--teal-dark);line-height:1.25;letter-spacing:-.3px}
+.metric .value small{font-size:12px;color:var(--faint);font-weight:500;letter-spacing:0}
+.metric .label{font-size:12px;color:var(--muted);margin-top:4px}
+.metric .delta{font-size:11.5px;color:var(--amber);font-weight:700;margin-top:5px}
+
+/* ---------- New: quote chips ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.quote-chip{
+  background:#f3f8f9;border:1px solid #e1ecef;border-radius:999px;
+  padding:4px 11px;font-size:12.5px;color:#405a62;
+}
+.quote-chip::before{content:"“";color:var(--teal);font-weight:700}
+.quote-chip::after{content:"”";color:var(--teal);font-weight:700}
+
+/* ---------- New: principles ---------- */
+.principle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:14px 0}
+.principle{
+  background:#fff;border:1px solid var(--line);border-top:3px solid var(--teal);
+  border-radius:14px;padding:18px;box-shadow:var(--shadow-sm);
+}
+.principle h4{margin:0 0 6px;font-size:16px;color:var(--deep)}
+.principle p{margin:0;font-size:13.5px;color:var(--muted)}
+.principle .en{font-size:11px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase;display:block;margin-bottom:4px}
+
+/* ---------- New: priority matrix ---------- */
+.matrix{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.quad{
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:16px 18px;box-shadow:var(--shadow-sm);
+}
+.quad h4{margin:0 0 6px;font-size:14px;display:flex;align-items:center;gap:8px}
+.quad p{margin:0;font-size:13px;color:var(--muted)}
+.quad.hot{background:#f4fdfd;border-color:#c9ecec}
+.quad.cold{background:#fafbfb}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--teal)}
+.dot.amber{background:var(--amber)}
+.dot.gray{background:#b7c5c9}
+
+/* ---------- New: flow ---------- */
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:10px 0}
+.flow .step{
+  background:#eef8f8;border:1px solid #d5eded;color:#0b6b6e;
+  border-radius:8px;padding:4px 10px;font-size:12.5px;font-weight:600;
+}
+.flow .sep{color:#a7c4c7;font-size:13px}
+
+/* ---------- Misc ---------- */
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.pill{
+  font-size:12.5px;padding:3px 11px;border-radius:999px;
+  background:#eef7f7;color:#166f72;border:1px solid #d9eded;
+}
+.big-quote{
+  font-size:19px;line-height:1.7;font-weight:600;color:var(--deep);
+  margin:6px 0 0;
+}
+.divider{height:1px;background:var(--line);margin:26px 0}
+footer{
+  background:#082f36;color:#a9c9cb;
+  padding:28px 0;font-size:13px;
+}
+footer b{color:#fff}
+.small-table table{min-width:520px;font-size:13px}
+.source-note{font-size:12px;color:var(--faint);margin-top:8px}
+
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .grid-3,.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gallery{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .principle-grid{grid-template-columns:1fr}
+}
+@media (max-width:680px){
+  .hero{padding:52px 0 40px}
+  .hero h1{font-size:34px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  h2{font-size:23px}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+  .gallery{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .shot img{height:220px}
+  .check{grid-template-columns:1fr}
+  .arch-split{grid-template-columns:1fr}
+  .matrix{grid-template-columns:1fr}
+  section{padding-top:28px}
+}
+
+/* ---------- Print ---------- */
+@media print{
+  .toc{display:none}
+  body{background:#fff}
+  .hero{background:#08343c !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .card,.diff,.table-wrap,.shot,.metric,.principle,.quad{box-shadow:none}
+  section{break-inside:avoid}
+  a{color:inherit;text-decoration:none}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Product · UX · Engineering Review · 2026-11-08</p>
+    <h1>全屋智能小程序<br><span>产品与开发分析报告</span></h1>
+    <p class="lede">
+      技术路线：<b>uni-app + Vue 3，微信小程序优先</b>。输入：13 张 JPG 设计稿 + 2 份产品/UX 文档；
+      没有 Figma 文件，也能做高保真还原。
+    </p>
+    <div class="stats">
+      <div class="stat"><b>13</b><span>张 JPG 设计稿</span></div>
+      <div class="stat"><b>2</b><span>份产品 / UX 文档</span></div>
+      <div class="stat"><b>8.4万+</b><span>已体验用户</span></div>
+      <div class="stat"><b>3</b><span>项核心体验 KR</span></div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="目录">
+  <div class="wrap">
+    <a href="#tldr">结论速览</a>
+    <a href="#product">产品定义</a>
+    <a href="#ux">体验拆解</a>
+    <a href="#stack">技术路线</a>
+    <a href="#framework">工程架构</a>
+    <a href="#modules">模块优先级</a>
+    <a href="#demo">演示边界</a>
+    <a href="#architecture">前后台</a>
+    <a href="#database">数据模型</a>
+    <a href="#design-input">设计输入</a>
+    <a href="#roadmap">实施路线</a>
+    <a href="#appendix">附录</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- ============ 01 TL;DR ============ -->
+<section id="tldr">
+  <div class="sec-head">
+    <div class="sec-no">01</div>
+    <div>
+      <h2>结论速览</h2>
+      <p class="sec-sub">技术路线已确定为 uni-app + Vue 3 微信小程序优先；设计输入只有 13 张 JPG，无 Figma 文件。</p>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:44px">#</th><th style="width:130px">问题</th><th>结论</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><b>开发语言</b></td>
+          <td>确定走 <b>uni-app + Vue 3 + TypeScript</b>，以<b>微信小程序</b>为主目标，H5/App 作为同一套代码的副产物。不再采用「先 H5 后迁移」的路线。</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><b>框架</b></td>
+          <td>uni-app + Vue 3 + TypeScript + Vite + Pinia；UI 用 <b>Wot Design Uni</b> 或 uView Plus；图表用 <b>uCharts</b>；请求用 <code class="inline">uni.request</code>，路由用 <code class="inline">pages.json</code>。设备「能力模型」、场景「触发器 → 动作 → 执行状态」不变。</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><b>开发板块</b></td>
+          <td>10 个板块，但演示只围绕核心闭环：<b>找设备 → 读状态 → 快操作 → 得反馈</b>。最难的是场景执行器、设备状态一致性、配网状态机，不是页面本身。</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><b>演示做到哪</b></td>
+          <td>做到 <b>B 级「可交互演示」</b>，交付微信体验版二维码；用 UX 文档里的任务验收：3 秒内找到运行设备、设备操作 ≤2 步、每次操作有明确反馈。约 2 周，不需要真实硬件。</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><b>前后台</b></td>
+          <td>前台 = 微信小程序用户端；后台 = PC 管理端（演示可省）；中间是 API 适配层 + 模拟设备引擎。演示阶段前端 Mock 足够。</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><b>数据库</b></td>
+          <td>纯前端演示<b>不需要</b>。加轻后端用 SQLite；真实产品才需要 PostgreSQL/MySQL + Redis + 时序库（能耗）。关键是设备状态、场景执行记录与事件日志的建模。</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><b>其他建议</b></td>
+          <td>把 PDF2 的「状态前置、操作聚合、反馈明确」翻译成小程序规范；先做状态层和反馈层；只有图片没有 Figma，也能按第 10 节流程做高保真还原；埋点从第一天就加。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid-3 mt14">
+    <div class="card">
+      <p class="kicker">判断一</p>
+      <p class="big-quote">产品本质是「状态控制台」，不是遥控器合集。</p>
+      <p class="small muted" style="margin-top:8px">用户要的是：家里现在怎么样、哪个设备在跑、点一下会怎样。</p>
+    </div>
+    <div class="card">
+      <p class="kicker">判断二</p>
+      <p class="big-quote">体验核心是「找、读、控、反馈」四步。</p>
+      <p class="small muted" style="margin-top:8px">PDF2 的所有优化，最终都落在这四步的时间和确定性上。</p>
+    </div>
+    <div class="card">
+      <p class="kicker">判断三</p>
+      <p class="big-quote">开发难点在状态与反馈，不在页面数量。</p>
+      <p class="small muted" style="margin-top:8px">状态不一致、操作没反馈、场景执行不可见，是演示最容易穿帮的地方。</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>本报告的证据基础：</strong>
+    13 张 JPG 设计稿 +《C端-智能终端中控-家居工具项目（优化版）》功能说明 +
+    《蚁玉梅 UX》体验优化案例。PDF2 中的量化数据是设计团队的验证结果，
+    本报告将其作为<b>设计目标与验收任务</b>引用，不把它当作演示版本的实测承诺。技术路线为 uni-app + Vue 3 微信小程序优先；设计输入只有 13 张 JPG，没有 Figma 文件。
+  </div>
+</section>
+
+<!-- ============ 02 Product ============ -->
+<section id="product">
+  <div class="sec-head">
+    <div class="sec-no">02</div>
+    <div>
+      <h2>产品定义：它到底解决什么问题</h2>
+      <p class="sec-sub">先还原产品，再谈技术。</p>
+    </div>
+  </div>
+
+  <p class="lead">
+    产品文档给出的定义很明确：<b>一站式全屋智能设备管理平台</b>，覆盖
+    「设备控制 - 数据统计 - 场景联动 - 设备管理」全流程。它不是单一设备的遥控器，
+    而是以「家」为单位的状态与任务管理中心。
+  </p>
+
+  <div class="grid-3 mt14">
+    <div class="card">
+      <p class="kicker">环境状态</p>
+      <p style="margin:6px 0 0">温度、湿度、空气质量</p>
+      <p class="small muted" style="margin:4px 0 0">回答「家里现在舒不舒服」。</p>
+    </div>
+    <div class="card">
+      <p class="kicker">设备状态</p>
+      <p style="margin:6px 0 0">开关、模式、进度、剩余时间、在线状态</p>
+      <p class="small muted" style="margin:4px 0 0">回答「哪个设备在干什么」。</p>
+    </div>
+    <div class="card">
+      <p class="kicker">任务状态</p>
+      <p style="margin:6px 0 0">场景执行、清洁进度、配网步骤、能耗统计</p>
+      <p class="small muted" style="margin:4px 0 0">回答「我发起的事进行到哪了」。</p>
+    </div>
+  </div>
+
+  <p class="mt14">
+    用户的核心工作可以压缩成一条链路：
+  </p>
+  <div class="flow">
+    <span class="step">找设备</span><span class="sep">→</span>
+    <span class="step">读状态</span><span class="sep">→</span>
+    <span class="step">快操作</span><span class="sep">→</span>
+    <span class="step">得反馈</span>
+  </div>
+  <p class="small muted">
+    这条链路也解释了为什么 PDF2 把优化目标定为「状态识别耗时、操作耗时、操作失误率」——
+    它们正好对应链路的前三步，而反馈决定第四步是否可信。
+  </p>
+
+  <h3>信息架构</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>一级入口</th><th>页面/能力</th><th>设计稿</th><th>在核心链路中的角色</th></tr></thead>
+      <tbody>
+        <tr><td><b>首页</b></td><td>家庭看板</td><td>首页1.0</td><td>环境与运行设备总览；找设备、读状态的第一入口</td></tr>
+        <tr><td><b>全屋智能</b></td><td>全屋控制</td><td>全屋智能</td><td>空间关联：户型图、设备分布、分区控制</td></tr>
+        <tr><td><b>设备控制</b></td><td>空调 / 窗帘 / 电视 / 净化器</td><td>智能空调、智能窗帘、智能电视、净化器</td><td>精细控制：四类完全不同的控制形态</td></tr>
+        <tr><td><b>场景</b></td><td>场景列表 / 场景详情 / 清洁模式</td><td>添加场景1、添加场景2、清洁模式</td><td>任务编排：一键多设备联动、触发条件、执行进度</td></tr>
+        <tr><td><b>设备接入</b></td><td>扫描 / 连接</td><td>添加设备1、添加设备3</td><td>设备资产扩展：扫描、配网、批量添加</td></tr>
+        <tr><td><b>能耗</b></td><td>电量统计</td><td>电量统计</td><td>数据反馈：趋势、电费、碳排、设备排名</td></tr>
+        <tr><td><b>我的</b></td><td>个人中心</td><td>我的</td><td>家庭资产与入口：设备/成员统计、服务、设置</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>用户问题：从功能痛点走向体验归因</h3>
+  <p>
+    PDF1 从功能视角列了 5 类痛点；PDF2 用 AI 工具对用户反馈做语义聚类，归因为 3 个核心问题。
+    两者合在一起，问题链条就完整了。
+  </p>
+
+  <div class="chips">
+    <span class="quote-chip">温度按钮到底在哪</span>
+    <span class="quote-chip">调个温度这么麻烦</span>
+    <span class="quote-chip">我老是点错</span>
+    <span class="quote-chip">这个按钮是开还是关</span>
+    <span class="quote-chip">PM2.5 也太小</span>
+    <span class="quote-chip">空气质量到底怎么样</span>
+    <span class="quote-chip">第一次真不知道怎么滑</span>
+    <span class="quote-chip">功能怎么散得到处都是</span>
+    <span class="quote-chip">操作步骤有点多</span>
+    <span class="quote-chip">反馈有点慢，不确定成功没</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>用户现象 / 原声</th><th>问题归类</th><th>体验影响</th><th>对应设计策略</th></tr></thead>
+      <tbody>
+        <tr><td>不同品类控制界面差异大；「更多功能」入口隐蔽</td><td>一致性与学习成本</td><td>换设备就要重新学，进阶功能找不到</td><td>统一状态区 + 按任务分组</td></tr>
+        <tr><td>电量图数据密度高，设备占比关联弱；缺少优化建议</td><td>数据可读性与决策支持</td><td>只看得到数字，不知道该怎么省电</td><td>放大核心数值、峰值高亮、给建议</td></tr>
+        <tr><td>场景动作预设、不能增删；只有手动触发</td><td>场景自定义门槛</td><td>场景不贴合真实生活，用户放弃使用</td><td>动作可编排、触发器可视化</td></tr>
+        <tr><td>扫描反馈弱；批量添加要逐个点连接</td><td>配网流畅性</td><td>等待焦虑、误以为故障</td><td>进度、状态区分、批量选择</td></tr>
+        <tr><td>户型图点击后的控制界面与单设备页不一致；场景快捷入口不突出</td><td>全屋层级与操作效率</td><td>路径混乱，场景入口被忽略</td><td>空间高亮联动、选中态强化</td></tr>
+        <tr><td>温度调节入口不明显，频繁找箭头</td><td>状态识别与操作路径</td><td>操作耗时、易误触</td><td>状态前置、放大调节区</td></tr>
+        <tr><td>PM2.5 字号小；窗帘首次不知道怎么滑</td><td>数据感知与学习门槛</td><td>读取慢、首次使用失败</td><td>核心数值放大、滑动引导</td></tr>
+        <tr><td>操作后不确定是否成功</td><td>反馈缺失</td><td>重复点击、焦虑、误判</td><td>pending / 成功 / 失败 + 文案</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid-3 mt14">
+    <div class="principle">
+      <span class="en">Problem 01</span>
+      <h4>状态识别成本高</h4>
+      <p>核心状态不突出、字号小、颜色弱，用户要「找」和「猜」。对应目标：识别耗时下降。</p>
+    </div>
+    <div class="principle">
+      <span class="en">Problem 02</span>
+      <h4>操作路径低效</h4>
+      <p>入口分散、步骤多、执行按钮深，用户从「想操作」到「完成」链路太长。</p>
+    </div>
+    <div class="principle">
+      <span class="en">Problem 03</span>
+      <h4>功能学习门槛高</h4>
+      <p>交互形态不统一、首次无引导，滑块、遥控、模式切换都要试错。</p>
+    </div>
+  </div>
+
+  <h3>设计目标与验证结果</h3>
+  <p>
+    PDF2 把目标写成了可量化的 KR，并在优化后给出了验证数据。它们可以直接转化为开发验收任务。
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>指标</th><th>目标</th><th>设计动作</th><th>验证结果</th></tr></thead>
+      <tbody>
+        <tr><td><b>核心状态识别耗时</b></td><td class="num">↓ ≥30%</td><td>强化温度、PM2.5、运行状态的信息层级；字号、对比度、信息聚焦</td><td class="num">3.1s → 1.5s</td></tr>
+        <tr><td><b>设备操作耗时</b></td><td class="num">↓ ≥35%</td><td>重构按钮状态与操作反馈；强化可操作区域与引导；缩短路径</td><td class="num">3.5s → 1.6s</td></tr>
+        <tr><td><b>操作失误率</b></td><td class="num">↓ ≥25%</td><td>按操作习惯重新分组；明确状态区分；即时反馈</td><td class="num">18.2% → 6.7%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>产品规模信号：</strong>
+    PDF2 提到「8.4 万+ 用户已体验，本月使用量持续上升」。这意味着这不是一个纯概念稿，
+    而是有真实使用反馈的设计迭代。开发时更应该优先保证状态准确、反馈明确，而不是堆页面。
+  </div>
+</section>
+
+<!-- ============ 03 UX ============ -->
+<section id="ux">
+  <div class="sec-head">
+    <div class="sec-no">03</div>
+    <div>
+      <h2>体验拆解：每一页到底优化了什么</h2>
+      <p class="sec-sub">把 PDF2 的 before/after 翻译成开发可执行的动作。</p>
+    </div>
+  </div>
+
+  <p class="lead">
+    PDF2 的方法可以概括为一句话：<b>状态前置、操作聚合、反馈明确</b>。
+    四个作用维度是状态、层级、路径、反馈。下面按页面拆开看。
+  </p>
+
+  <div class="principle-grid">
+    <div class="principle">
+      <span class="en">Principle 01</span>
+      <h4>状态前置</h4>
+      <p>温度、PM2.5、运行模式、剩余时间放在视觉第一层，用户扫一眼就知道现在怎么样。</p>
+    </div>
+    <div class="principle">
+      <span class="en">Principle 02</span>
+      <h4>操作聚合</h4>
+      <p>按任务而不是按控件堆功能；高频操作靠近拇指；场景执行按钮固定在执行区。</p>
+    </div>
+    <div class="principle">
+      <span class="en">Principle 03</span>
+      <h4>反馈明确</h4>
+      <p>每次操作都有 pending、成功、失败；滑动有进度；配网有步骤；场景有逐项结果。</p>
+    </div>
+  </div>
+
+  <h3>页面级优化对照</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>页面</th><th>改版前的问题</th><th>改版后的动作</th><th>可验证指标</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>首页</b></td>
+          <td>空间分类模糊；设备运行状态权重不足；定位目标设备耗时</td>
+          <td>放大温湿度/空气质量并增加图标对比；房间标签加粗 + 浅底色选中态；运行模式与时长加粗、进度条高饱和</td>
+          <td class="num">定位读取 3.6s → 1.8s</td>
+        </tr>
+        <tr>
+          <td><b>全屋控制</b></td>
+          <td>户型与设备关联弱；开关状态反馈弱；标签选中态不突出</td>
+          <td>户型区域增加浅色标识，点击控制标签同步高亮；开启用高饱和色、关闭弱化；增加开/关提示</td>
+          <td>空间与设备建立直观关联</td>
+        </tr>
+        <tr>
+          <td><b>单设备控制</b></td>
+          <td>温度入口不明显；PM2.5 字号小；遥控按键每次都要找</td>
+          <td>放大温度、PM2.5 等核心数据；强化电源、模式、选中状态；按功能重组遥控按钮；补充点击/滑动反馈</td>
+          <td>整体核心指标见第 02 节</td>
+        </tr>
+        <tr>
+          <td><b>场景页</b></td>
+          <td>自动/手动状态区分弱；常用场景与推荐场景边界模糊</td>
+          <td>强化自动/手动标签的字重与颜色；常用场景与推荐分区；把开启、定时等高频操作收拢为紧凑入口</td>
+          <td class="num">场景判断 3.3s → 1.5s</td>
+        </tr>
+        <tr>
+          <td><b>附近设备 / 配网</b></td>
+          <td>扫描反馈弱；连接状态区分不清；辅助添加入口不突出</td>
+          <td>强化扫描文案与动态进度；弱化未就绪、高亮可连接；集中蓝牙/扫码/按品类入口；连接步骤逐项点亮</td>
+          <td class="num">连接点击转化 12.5% → 28.3%<br>辅助添加使用 8.2% → 21.7%</td>
+        </tr>
+        <tr>
+          <td><b>清洁模式</b></td>
+          <td>场景理解成本高；核心进度不突出；模式选择层级混乱</td>
+          <td>增加场景头图与说明；放大进度 60% 与预计时间；标准/静音/深度改为独立列表并区分选中态</td>
+          <td>先理解场景，再执行</td>
+        </tr>
+        <tr>
+          <td><b>观影模式</b></td>
+          <td>执行路径长；设备状态分散；执行按钮位置深</td>
+          <td>设备状态集中在执行区；「执行场景」固定在右上；执行、触发条件、生效时间拆成独立模块</td>
+          <td class="num">路径缩短 50%<br>点击转化 +32.7%<br>状态识别 -1.5s</td>
+        </tr>
+        <tr>
+          <td><b>个人中心 / 能耗</b></td>
+          <td>功能入口无分组；核心设备数据不突出；峰值与占比弱</td>
+          <td>按家庭管理/个人服务分组并加分隔；放大设备与运行数；深色会员卡；峰值橙色加粗；设备耗电用高饱和进度条 + 占比</td>
+          <td class="num">入口定位 4.1s → 1.8s<br>能耗读取 3.5s → 1.6s</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>四个最值得记住的改版</h3>
+  <div class="grid-2 mt14">
+    <div class="card">
+      <p class="kicker">首页 · 信息权重</p>
+      <h4>把「现在怎么样」放到第一眼</h4>
+      <p class="small">环境三指标放大并加图标对比；房间标签的选中态用字重 + 浅底色；运行设备的模式、时长、进度成为卡片主信息。</p>
+      <p class="small muted">开发时对应：设备卡片的字段排序、字号层级、选中态样式，不能只做「能显示」。</p>
+    </div>
+    <div class="card">
+      <p class="kicker">观影模式 · 路径</p>
+      <h4>把执行入口从「深处」提到「手边」</h4>
+      <p class="small">设备状态不再让用户逐个进详情确认，而是集中在执行区；执行按钮固定；触发条件和生效时间独立成块。</p>
+      <p class="small muted">开发时对应：场景详情页布局、执行按钮固定、动作列表与触发条件分区。</p>
+    </div>
+    <div class="card">
+      <p class="kicker">配网 · 确定性</p>
+      <h4>让等待变得可解释</h4>
+      <p class="small">扫描有进度，连接有 18 秒倒计时，步骤逐项完成；未就绪状态弱化，可连接状态高亮。</p>
+      <p class="small muted">开发时对应：配网状态机、进度条、步骤节点、失败引导，而不是一个转圈。</p>
+    </div>
+    <div class="card">
+      <p class="kicker">我的 / 能耗 · 决策</p>
+      <h4>从「展示数据」到「帮助决策」</h4>
+      <p class="small">入口分组降低查找成本；峰值高亮；设备耗电用进度条 + 占比；电费与平均用电统一收拢。</p>
+      <p class="small muted">开发时对应：图表标注、排序、聚合口径、建议文案的数据来源。</p>
+    </div>
+  </div>
+
+  <h3>从设计策略到代码</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>设计策略</th><th>前端实现</th><th>验收方式</th></tr></thead>
+      <tbody>
+        <tr><td><b>状态前置</b></td><td>设备卡片按「状态优先级」渲染；核心数值用大字号 + 单位 + 状态标签；颜色不只表达状态，同时给文字</td><td>首页 3 秒内指出哪台设备在运行、在做什么</td></tr>
+        <tr><td><b>操作聚合</b></td><td>设备详情按任务分区；场景执行按钮固定；高频操作靠近底部拇指区；减少弹层层级</td><td>从首页到完成一次温度调节 ≤2 步</td></tr>
+        <tr><td><b>反馈明确</b></td><td>乐观更新 + pending/success/failed 三态；300ms 内出现反馈；失败可重试；危险操作可撤销</td><td>每次操作都有可见反馈，不出现「点了没反应」</td></tr>
+        <tr><td><b>层级重构</b></td><td>设计令牌统一字号/颜色/间距；Tab 选中态、自动/手动标签、分组标题组件化</td><td>不看说明也能区分「自动」和「手动」场景</td></tr>
+        <tr><td><b>数据感知</b></td><td>uCharts 峰值标注；单位与等级；设备排名用进度条 + 百分比；建议规则可配置</td><td>能耗页 2 秒内说出本周最耗电设备</td></tr>
+        <tr><td><b>降低门槛</b></td><td>窗帘滑杆带方向提示；首次进入有轻量引导；空状态给下一步动作</td><td>新用户首次可独立完成一次场景执行与配网</td></tr>
+        <tr><td><b>一致性</b></td><td>能力注册表 + 共享组件；所有设备共用状态区、电源键、更多功能入口</td><td>换设备不需要重新学习基本操作</td></tr>
+        <tr><td><b>可观测</b></td><td>关键节点埋点：卡片曝光、控制开始/确认/失败、场景执行、配网步骤</td><td>能在控制台还原一次完整操作链路</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="warn">
+    <strong>不要把设计验证数据当成演示数据：</strong>
+    PDF2 的 3.1s→1.5s 等数字来自设计团队的用户测试。你的演示版本可以做同样的任务测试、
+    在自己的环境里记录时间，但不要在演示中宣称「已达到」这些数字。诚实说明来源，反而加分。
+  </div>
+</section>
+
+<!-- ============ 04 Route ============ -->
+<section id="stack">
+  <div class="sec-head">
+    <div class="sec-no">04</div>
+    <div>
+      <h2>技术路线：uni-app + Vue 3，微信小程序优先</h2>
+      <p class="sec-sub">路线已定，不再走「先 H5 后迁移」。</p>
+    </div>
+  </div>
+
+  <p class="lead">
+    这个产品的目标是微信小程序，且没有必须原生才能满足的能力（BLE 小程序也能做）。
+    直接以 <b>uni-app + Vue 3 + TypeScript</b> 起步，H5 和 App 作为同一套代码的副产物，
+    比先写纯 H5 再迁移少一次返工。
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>路线</th><th>小程序适配</th><th>代码复用</th><th>开发速度</th><th>主要风险</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>uni-app + Vue 3</b> <span class="badge b-should">选定</span></td>
+          <td>原生支持，编译到微信小程序</td>
+          <td>一套代码出小程序 / H5 / App</td>
+          <td><span class="stars">★★★★<span class="off">★</span></span></td>
+          <td>UI 库需选 uni-app 生态；部分 Web 能力不可用</td>
+        </tr>
+        <tr>
+          <td><b>纯 H5 + 后迁 uni-app</b></td>
+          <td>需要二次适配</td>
+          <td>业务逻辑可复用，UI/路由/图表要重写</td>
+          <td><span class="stars">★★★★<span class="off">★</span></span></td>
+          <td>整体 20%–30% 返工；Vant/axios/Vue Router 都要换</td>
+        </tr>
+        <tr>
+          <td><b>微信原生小程序</b></td>
+          <td>最好</td>
+          <td>不能复用到 H5/App</td>
+          <td><span class="stars">★★★<span class="off">★★</span></span></td>
+          <td>WXML/WXSS 生态与 Vue 不同；多端要重写</td>
+        </tr>
+        <tr>
+          <td><b>Android 原生</b></td>
+          <td>不做小程序</td>
+          <td>不能复用</td>
+          <td><span class="stars">★★<span class="off">★★★</span></span></td>
+          <td>只适合必须直连硬件的场景</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>这套技术栈</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>层</th><th>选型</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>框架</td><td><b>uni-app + Vue 3 + Vite + TypeScript</b></td><td>官方 Vue3/Vite 模板；小程序为主目标</td></tr>
+        <tr><td>状态</td><td><b>Pinia</b></td><td>uni-app 支持；持久化走 <code class="inline">uni.setStorageSync</code></td></tr>
+        <tr><td>UI 组件</td><td><b>Wot Design Uni</b> 或 <b>uView Plus</b></td><td>Vant 4 不能用于小程序；二选一，不要混用</td></tr>
+        <tr><td>图表</td><td><b>uCharts / qiun-data-charts</b></td><td>比 ECharts 更适合小程序，体积小</td></tr>
+        <tr><td>路由</td><td><b>pages.json</b> + <code class="inline">uni.navigateTo</code></td><td>Tab 用 <code class="inline">switchTab</code>，登录后 <code class="inline">reLaunch</code></td></tr>
+        <tr><td>请求</td><td>自封装 <code class="inline">uni.request</code></td><td>域名白名单 + HTTPS；不要用 axios</td></tr>
+        <tr><td>存储</td><td><code class="inline">uni.setStorageSync</code></td><td>不要用 localStorage</td></tr>
+        <tr><td>时间</td><td>dayjs</td><td>纯 JS，体积小</td></tr>
+        <tr><td>图标</td><td>iconfont 或 PNG</td><td>内联 SVG 在小程序里受限</td></tr>
+        <tr><td>安全区</td><td><code class="inline">env(safe-area-inset-bottom)</code></td><td>底部 TabBar / 操作栏必加</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>小程序硬约束：H5 习惯要换掉</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>H5 习惯</th><th>小程序里换成</th><th>注意</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">div / span / img</code></td><td><code class="inline">view / text / image</code></td><td>样式基本通用，标签必须换</td></tr>
+        <tr><td>Vue Router</td><td><code class="inline">pages.json</code> + <code class="inline">uni.navigateTo</code></td><td>页面栈最多 10 层；Tab 用 <code class="inline">switchTab</code></td></tr>
+        <tr><td>axios / fetch</td><td><code class="inline">uni.request</code></td><td>域名白名单、HTTPS、不能跨域</td></tr>
+        <tr><td>localStorage</td><td><code class="inline">uni.setStorageSync</code></td><td>同步 API，注意大对象体积</td></tr>
+        <tr><td>window / document</td><td><code class="inline">uni.getSystemInfoSync()</code>、<code class="inline">uni.createSelectorQuery()</code></td><td>没有 DOM/BOM</td></tr>
+        <tr><td>ECharts</td><td>uCharts / canvas-2d</td><td>小程序 canvas 层级高，弹层要避开</td></tr>
+        <tr><td>Vant 4</td><td>Wot Design Uni / uView Plus</td><td>Vant 只适用于 H5</td></tr>
+        <tr><td><code class="inline">v-html</code></td><td><code class="inline">rich-text</code></td><td>能力受限，尽量不用</td></tr>
+        <tr><td>keep-alive</td><td>不支持，<code class="inline">onShow</code> 刷新</td><td>Tab 页切回会触发 onShow</td></tr>
+        <tr><td>100vh</td><td><code class="inline">uni.getWindowInfo().windowHeight</code></td><td>或 100% + 页面滚动</td></tr>
+        <tr><td><code class="inline">*</code> / 深层选择器</td><td>scoped + 明确 class</td><td>部分选择器不支持</td></tr>
+        <tr><td>backdrop-filter</td><td>半透明纯色/渐变</td><td>部分机型不支持</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>选型结论：</strong>
+    UI 库在 <b>Wot Design Uni</b> 和 <b>uView Plus</b> 之间二选一。这个设计稿是白卡、圆角、青绿主色、弱阴影，
+    Wot Design Uni 的视觉更接近，Vue3 + TS 支持也好；uView Plus 组件更全但更重。先选一个，不要混用。
+  </div>
+
+  <h3>工程初始化</h3>
+<pre>npx degit dcloudio/uni-preset-vue#vite-ts my-smart-home
+cd my-smart-home
+pnpm i
+pnpm dev:mp-weixin
+<span class="c"># 产物：dist/dev/mp-weixin，用微信开发者工具打开</span>
+</pre>
+
+  <p class="small muted">
+    微信开发者工具需要 AppID；演示可用测试号/体验版，正式发布需要类目、隐私协议、域名白名单与审核。
+  </p>
+</section>
+
+<!-- ============ 05 Framework ============ -->
+<section id="framework">
+  <div class="sec-head">
+    <div class="sec-no">05</div>
+    <div>
+      <h2>工程架构：状态、反馈、场景三条主线</h2>
+      <p class="sec-sub">小程序最容易写乱的不是页面，是状态与平台 API。</p>
+    </div>
+  </div>
+
+  <h3>推荐技术栈</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>层</th><th>选型</th><th>作用</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td>框架</td><td><b>uni-app + Vue 3 + Vite + TypeScript</b></td><td>页面、编译、多端输出</td><td>小程序为主目标</td></tr>
+        <tr><td>状态</td><td><b>Pinia</b> + uni storage</td><td>设备状态、场景、用户</td><td>单一数据源，页面只读 store</td></tr>
+        <tr><td>路由</td><td><b>pages.json</b> + <code class="inline">uni.navigateTo</code></td><td>页面跳转、Tab 切换</td><td>页面栈最多 10 层</td></tr>
+        <tr><td>UI 组件</td><td><b>Wot Design Uni</b> 或 <b>uView Plus</b></td><td>弹层、滑块、开关、Toast</td><td>Vant 4 不可用</td></tr>
+        <tr><td>图表</td><td><b>uCharts / qiun-data-charts</b></td><td>能耗趋势、排名</td><td>比 ECharts 更适合小程序</td></tr>
+        <tr><td>样式</td><td>SCSS + rpx + CSS 变量</td><td>设计令牌与主题</td><td>750 设计稿 ≈ 750rpx</td></tr>
+        <tr><td>请求</td><td>自封装 <code class="inline">uni.request</code></td><td>接口封装</td><td>Mock/真实接口可切换</td></tr>
+        <tr><td>时间</td><td>dayjs</td><td>时间格式化、倒计时</td><td>纯 JS，体积小</td></tr>
+        <tr><td>工具</td><td>@vueuse/core（慎用）</td><td>防抖、轮询</td><td>避开依赖 DOM 的函数</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>小程序工程约束</h3>
+  <div class="grid-3 mt14">
+    <div class="card">
+      <h4>包体积</h4>
+      <p class="small">主包 ≤2&nbsp;MB，总包 ≤20&nbsp;MB。设备接入、能耗、设置、商城放分包；产品图压缩或 CDN。</p>
+    </div>
+    <div class="card">
+      <h4>页面栈</h4>
+      <p class="small">最多 10 层；设备/场景详情避免无限 <code class="inline">navigateTo</code>，必要时 <code class="inline">redirectTo</code>。</p>
+    </div>
+    <div class="card">
+      <h4>原生组件</h4>
+      <p class="small">canvas、video、textarea 层级高，会盖住普通元素；弹层要避开或用 cover-view。</p>
+    </div>
+  </div>
+
+  <h3>推荐的目录结构</h3>
+<pre><span class="c"># 核心变化：pages 按小程序组织；core / platform 保持平台无关</span>
+src/
+  pages/
+    home/index.vue              <span class="c"># 首页</span>
+    all-home/index.vue          <span class="c"># 全屋控制</span>
+    device/detail.vue           <span class="c"># 设备详情（动态参数）</span>
+    scene/index.vue             <span class="c"># 场景列表</span>
+    scene/detail.vue            <span class="c"># 场景详情</span>
+    mine/index.vue              <span class="c"># 我的</span>
+  pkgAdd/                       <span class="c"># 分包：附近设备 / 配网</span>
+  pkgEnergy/                    <span class="c"># 分包：电量统计</span>
+  components/
+    layout/                     <span class="c"># NavBar、TabBar、PageShell</span>
+    common/                     <span class="c"># Card、Stat、Toggle、Empty、Sheet</span>
+    device/                     <span class="c"># 按能力拆分的控制组件</span>
+    scene/                      <span class="c"># SceneCard、ActionItem、TriggerItem</span>
+    feedback/                   <span class="c"># Toast、InlineStatus、RetryBar</span>
+    charts/                     <span class="c"># uCharts 封装</span>
+  core/                         <span class="c"># types、stores、commands、scene-engine、mock</span>
+  platform/                     <span class="c"># storage、request、nav、toast、ble</span>
+  static/                       <span class="c"># 图标、产品图、tabbar 图标</span>
+  styles/                       <span class="c"># tokens.scss、global.scss</span>
+  pages.json
+  manifest.json
+  uni.scss
+</pre>
+
+  <h4>pages.json 骨架</h4>
+<pre>{
+  "pages": [
+    "pages/home/index",
+    "pages/all-home/index",
+    "pages/device/detail",
+    "pages/scene/index",
+    "pages/discover/index",
+    "pages/mall/index",
+    "pages/mine/index"
+  ],
+  "subPackages": [
+    { "root": "pkgAdd", "pages": [{ "path": "index/index" }, { "path": "connect/index" }] },
+    { "root": "pkgEnergy", "pages": [{ "path": "index/index" }] }
+  ],
+  "tabBar": {
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/scene/index", "text": "场景" },
+      { "pagePath": "pages/discover/index", "text": "发现" },
+      { "pagePath": "pages/mall/index", "text": "商城" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  }
+}
+</pre>
+  <p class="small muted">为便于阅读，省略了 style、window 等配置。</p>
+
+  <h3>先定义状态模型，再写页面</h3>
+  <p>
+    PDF2 反复强调「状态前置」。落到代码里，就是让状态成为独立、可序列化、可订阅的数据，
+    而不是散落在各页面的 <code class="inline">ref</code> 里。
+  </p>
+
+<pre><span class="k">type</span> OnlineStatus = <span class="c">'online'</span> | <span class="c">'offline'</span> | <span class="c">'connecting'</span>;
+
+<span class="k">interface</span> DeviceState {
+  power: <span class="k">boolean</span>;
+  mode?: <span class="k">string</span>;              <span class="c">// 制冷 / 制热 / 自动 / 睡眠</span>
+  targetTemp?: <span class="k">number</span>;
+  currentTemp?: <span class="k">number</span>;
+  position?: <span class="k">number</span>;            <span class="c">// 窗帘 0–100</span>
+  pm25?: <span class="k">number</span>;
+  progress?: <span class="k">number</span>;             <span class="c">// 清洁/任务进度</span>
+  remainingSec?: <span class="k">number</span>;
+  updatedAt: <span class="k">number</span>;
+}
+
+<span class="k">interface</span> Device {
+  id: <span class="k">string</span>;
+  homeId: <span class="k">string</span>;
+  roomId: <span class="k">string</span>;
+  modelId: <span class="k">string</span>;
+  name: <span class="k">string</span>;
+  online: OnlineStatus;
+  capabilities: Capability[];
+  state: DeviceState;
+}
+</pre>
+
+  <h4>平台适配层：不要直接写 uni API</h4>
+<pre><span class="c">// platform/storage.ts</span>
+<span class="k">export const</span> storage = {
+  get&lt;T&gt;(key: <span class="k">string</span>): T | <span class="k">null</span> {
+    <span class="k">const</span> value = uni.getStorageSync(key);
+    <span class="k">return</span> value ? (value <span class="k">as</span> T) : <span class="k">null</span>;
+  },
+  set(key: <span class="k">string</span>, value: <span class="k">unknown</span>) {
+    uni.setStorageSync(key, value);
+  },
+};
+</pre>
+
+  <h4>命令与反馈三态</h4>
+<pre><span class="k">type</span> CommandStatus = <span class="c">'pending'</span> | <span class="c">'success'</span> | <span class="c">'failed'</span>;
+
+<span class="k">interface</span> CommandResult {
+  id: <span class="k">string</span>;
+  deviceId: <span class="k">string</span>;
+  capability: Capability;
+  status: CommandStatus;
+  message?: <span class="k">string</span>;
+  at: <span class="k">number</span>;
+}
+
+<span class="c">// 先乐观更新 UI，再等结果；失败回滚并给重试</span>
+<span class="k">async function</span> setTemperature(deviceId: <span class="k">string</span>, value: <span class="k">number</span>) {
+  <span class="k">const</span> prev = deviceStore.snapshot(deviceId);
+  deviceStore.patch(deviceId, { targetTemp: value });
+  <span class="k">const</span> res = <span class="k">await</span> deviceApi.command(deviceId, <span class="c">'setTemp'</span>, { value });
+  <span class="k">if</span> (!res.ok) {
+    deviceStore.restore(deviceId, prev);
+    toast.error(<span class="c">'调节失败，请重试'</span>);
+  }
+}
+</pre>
+
+  <h4>场景执行器状态机</h4>
+<pre><span class="k">type</span> SceneRunStatus = <span class="c">'idle'</span> | <span class="c">'running'</span> | <span class="c">'success'</span> | <span class="c">'partial'</span> | <span class="c">'failed'</span>;
+
+<span class="k">interface</span> SceneActionRun {
+  actionId: <span class="k">string</span>;
+  status: <span class="c">'pending'</span> | <span class="c">'running'</span> | <span class="c">'success'</span> | <span class="c">'failed'</span>;
+  message?: <span class="k">string</span>;
+}
+
+<span class="k">interface</span> SceneRun {
+  id: <span class="k">string</span>;
+  sceneId: <span class="k">string</span>;
+  status: SceneRunStatus;
+  startedAt: <span class="k">number</span>;
+  actions: SceneActionRun[];
+}
+</pre>
+
+  <p class="small muted">
+    执行器按动作顺序执行，每个动作单独更新状态；全部成功为 success，部分失败为 partial。
+    这样「清洁模式」「观影模式」的进度与结果才有真实感，也方便演示异常态。
+  </p>
+
+  <h4>设备能力注册表</h4>
+<pre><span class="k">type</span> Capability =
+  | <span class="c">'switch'</span> | <span class="c">'temperature'</span> | <span class="c">'position'</span> | <span class="c">'fanSpeed'</span>
+  | <span class="c">'mode'</span> | <span class="c">'remote'</span> | <span class="c">'pm25'</span> | <span class="c">'brightness'</span>;
+
+<span class="k">const</span> CONTROL_REGISTRY: Record&lt;Capability, Component&gt; = {
+  temperature: TemperatureDial,
+  position: CurtainSlider,
+  remote: TvRemote,
+  pm25: PurifierPanel,
+  switch: PowerSwitch,
+};
+</pre>
+
+  <h3>必须收到一起的 8 样东西</h3>
+  <div class="grid-2">
+    <div class="card">
+      <h4>1. 设计令牌</h4>
+      <p class="small">主色、背景、文字层级、圆角、阴影、间距、字号统一成 SCSS 变量/rpx。设计稿主色目测接近 <code class="inline">#12BFC1</code>。</p>
+    </div>
+    <div class="card">
+      <h4>2. 状态层</h4>
+      <p class="small">device/scene/energy 三个 store；页面只读派生数据；所有写操作走 command 层。</p>
+    </div>
+    <div class="card">
+      <h4>3. 反馈层</h4>
+      <p class="small">Toast、行内状态、重试条、骨架屏、空状态。统一组件，统一文案，统一时长。</p>
+    </div>
+    <div class="card">
+      <h4>4. 设备控制组件注册表</h4>
+      <p class="small">能力 → 控件；新增设备类型只加注册项，不复制页面。</p>
+    </div>
+    <div class="card">
+      <h4>5. 场景执行器</h4>
+      <p class="small">动作顺序、延迟、逐项状态、失败处理、执行日志；页面只负责展示 run 状态。</p>
+    </div>
+    <div class="card">
+      <h4>6. 模拟引擎</h4>
+      <p class="small">seed 数据 + 定时器 + 随机波动 + 可选失败；让温度、PM2.5、进度、在线状态动起来。</p>
+    </div>
+    <div class="card">
+      <h4>7. 埋点层</h4>
+      <p class="small">设备曝光、控制开始/确认/失败、场景执行、配网步骤；事件名和字段先定好。</p>
+    </div>
+    <div class="card">
+      <h4>8. API 适配层</h4>
+      <p class="small">MockAdapter / HttpAdapter 同一接口；底层用 <code class="inline">uni.request</code>，页面不感知数据来自哪里。</p>
+    </div>
+  </div>
+
+  <h3>需不需要面向对象？</h3>
+  <p>
+    前端 UI <b>不需要</b>继承树；业务模型需要<b>接口 + 组合 + 少量模式</b>。
+    Vue 的组件与组合式函数本身就是「组合优于继承」。真正值得抽象的是设备能力、场景执行、后端服务。
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>位置</th><th>建议</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>页面 / 组件</td><td>组合式函数 + props/emits</td><td>继承会让复用变脆，Vue 生态不鼓励</td></tr>
+        <tr><td>设备控制</td><td>能力模型 + 注册表 + 策略</td><td>不同设备共享状态区，控制区按能力替换</td></tr>
+        <tr><td>场景执行</td><td>状态机 + 命令模式</td><td>每个动作是一条命令，可记录、可重试、可回滚</td></tr>
+        <tr><td>后端服务</td><td>Controller → Service → Repository → Adapter</td><td>未来替换真实设备协议时不动业务层</td></tr>
+        <tr><td>设备接入</td><td>适配器模式</td><td>Mock / 米家 / 涂鸦 / Matter 可切换</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>埋点：把 UX 指标变成可观测事件</h3>
+  <p class="small">
+    PDF2 的指标本质上是「时间」和「错误率」。前端只要在关键节点打点，就能在演示环境复现同一套度量。
+  </p>
+<pre><span class="k">track</span>(<span class="c">'device_card_view'</span>,      { deviceId, source: <span class="c">'home'</span> });
+<span class="k">track</span>(<span class="c">'device_control_start'</span>,   { deviceId, capability: <span class="c">'temperature'</span> });
+<span class="k">track</span>(<span class="c">'device_control_confirm'</span>, { deviceId, capability, durationMs });
+<span class="k">track</span>(<span class="c">'device_control_error'</span>,   { deviceId, capability, reason });
+<span class="k">track</span>(<span class="c">'scene_execute'</span>,          { sceneId, actionCount });
+<span class="k">track</span>(<span class="c">'scene_action_result'</span>,    { sceneId, actionId, status });
+<span class="k">track</span>(<span class="c">'provision_step'</span>,         { step: <span class="c">'scan'</span> | <span class="c">'connect'</span> | <span class="c">'success'</span>, ms });
+</pre>
+
+  <div class="note">
+    <strong>架构判断：</strong>
+    这个项目不需要微服务，也不需要复杂后端。真正的复杂度在「一份状态如何被多个页面正确读写」。
+    先把 Pinia 状态层、命令层、反馈层做干净，比多写十个页面更有价值。
+  </div>
+
+  <h3>整体架构</h3>
+  <div class="arch">
+    <div class="arch-layer">
+      <div class="name">用户端（微信小程序 / uni-app）</div>
+      <div class="desc">首页 · 全屋 · 设备 · 场景 · 添设备 · 能耗 · 我的</div>
+    </div>
+    <div class="arrow"><b>↓</b>命令 / 查询</div>
+    <div class="arch-split">
+      <div class="arch-layer">
+        <div class="name">状态层（Pinia）</div>
+        <div class="desc">device / scene / energy / user；单一数据源、uni storage、派生选择器</div>
+      </div>
+      <div class="arch-layer">
+        <div class="name">反馈层</div>
+        <div class="desc">pending / success / failed；Toast、行内状态、重试、回滚</div>
+      </div>
+    </div>
+    <div class="arrow"><b>↓</b></div>
+    <div class="arch-split">
+      <div class="arch-layer">
+        <div class="name">模拟引擎</div>
+        <div class="desc">定时 tick、状态波动、进度增长、随机失败、执行器</div>
+      </div>
+      <div class="arch-layer">
+        <div class="name">API 适配层</div>
+        <div class="desc">MockAdapter（演示） / HttpAdapter（真实后端，uni.request）</div>
+      </div>
+    </div>
+    <div class="arrow"><b>↓</b>未来扩展（演示阶段不做）</div>
+    <div class="arch-layer">
+      <div class="name">SQLite / PostgreSQL · MQTT · 设备网关</div>
+      <div class="desc">设备影子、实时状态、真实硬件协议</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 Modules ============ -->
+<section id="modules">
+  <div class="sec-head">
+    <div class="sec-no">06</div>
+    <div>
+      <h2>模块优先级：先做哪 20%</h2>
+      <p class="sec-sub">按「用户价值 × 演示价值 ÷ 开发成本」排序。</p>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>模块</th><th>关键功能</th><th>用户价值</th><th>演示优先级</th><th>难度</th><th>开发要点</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>首页</b></td><td>环境、房间筛选、运行设备、快捷开关</td><td>高</td>
+          <td><span class="badge b-must">核心</span></td>
+          <td><span class="stars">★★★<span class="off">★★</span></span></td>
+          <td>状态卡、字段优先级、选中态、进度</td>
+        </tr>
+        <tr>
+          <td><b>设备控制</b></td><td>开关、温度、开合度、遥控、模式</td><td>高</td>
+          <td><span class="badge b-must">核心</span></td>
+          <td><span class="stars">★★★★<span class="off">★</span></span></td>
+          <td>能力注册表、统一状态区、反馈三态</td>
+        </tr>
+        <tr>
+          <td><b>场景与自动化</b></td><td>列表、详情、动作编排、触发、执行</td><td>高</td>
+          <td><span class="badge b-must">核心</span></td>
+          <td><span class="stars">★★★★★</span></td>
+          <td>状态机、逐项状态、定时/条件、执行日志</td>
+        </tr>
+        <tr>
+          <td><b>全屋控制</b></td><td>平面图、分区、设备热点、快捷模式</td><td>高</td>
+          <td><span class="badge b-should">重要</span></td>
+          <td><span class="stars">★★★★<span class="off">★</span></span></td>
+          <td>百分比坐标、区域高亮联动、热区点击</td>
+        </tr>
+        <tr>
+          <td><b>设备接入</b></td><td>扫描、配网、命名、房间、批量添加</td><td>高</td>
+          <td><span class="badge b-should">重要（模拟）</span></td>
+          <td><span class="stars">★★★★<span class="off">★</span></span></td>
+          <td>扫描/连接状态机、步骤节点、失败引导</td>
+        </tr>
+        <tr>
+          <td><b>能耗统计</b></td><td>日/周/月、趋势、电费、碳排、排名</td><td>高</td>
+          <td><span class="badge b-should">重要</span></td>
+          <td><span class="stars">★★★<span class="off">★★</span></span></td>
+          <td>uCharts、峰值标注、聚合口径、建议规则</td>
+        </tr>
+        <tr>
+          <td><b>个人中心</b></td><td>统计、会员、服务入口、设置</td><td>中</td>
+          <td><span class="badge b-should">重要</span></td>
+          <td><span class="stars">★★<span class="off">★★★</span></span></td>
+          <td>入口分组、数据一致性、静态页</td>
+        </tr>
+        <tr>
+          <td><b>消息告警</b></td><td>离线、场景完成、耗电异常</td><td>中</td>
+          <td><span class="badge b-later">可延后</span></td>
+          <td><span class="stars">★★<span class="off">★★★</span></span></td>
+          <td>列表 + 未读 + 跳转；推送后面再说</td>
+        </tr>
+        <tr>
+          <td><b>商城 / 发现</b></td><td>商品、内容流、活动位</td><td>低</td>
+          <td><span class="badge b-later">静态</span></td>
+          <td><span class="stars">★<span class="off">★★★★</span></span></td>
+          <td>纯展示，不接支付/库存</td>
+        </tr>
+        <tr>
+          <td><b>后台管理</b></td><td>设备型号、用户家庭、内容、报表</td><td>低（对演示）</td>
+          <td><span class="badge b-later">可省</span></td>
+          <td><span class="stars">★★★<span class="off">★★</span></span></td>
+          <td>除非答辩明确要求</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>优先级矩阵</h3>
+  <div class="matrix">
+    <div class="quad hot">
+      <h4><span class="dot"></span>高价值 · 低难度：先做</h4>
+      <p>首页、四类设备控制、场景执行、个人中心基础页、能耗图表。这些决定演示是否成立。</p>
+    </div>
+    <div class="quad">
+      <h4><span class="dot amber"></span>高价值 · 高难度：集中攻坚</h4>
+      <p>场景引擎、全屋平面图、配网模拟、状态一致性、反馈系统。提前预留 4–5 天。</p>
+    </div>
+    <div class="quad cold">
+      <h4><span class="dot gray"></span>低价值 · 低难度：顺手做</h4>
+      <p>商城/发现静态页、消息列表、设置项、会员卡。用来补全信息架构，不要投入过多。</p>
+    </div>
+    <div class="quad cold">
+      <h4><span class="dot gray"></span>低价值 · 高难度：明确不做</h4>
+      <p>真实蓝牙/WiFi、支付、语音、地图、多用户实时协作、应用商店上架。</p>
+    </div>
+  </div>
+
+  <h3>五个真正的难点</h3>
+  <div class="grid-2 mt14">
+    <div class="diff hard">
+      <h4>1. 场景引擎 <span class="badge b-must">最难</span></h4>
+      <p class="why">多动作顺序执行、逐项状态、定时/条件触发、部分失败、执行记录。页面只是展示，难点在状态机。</p>
+      <p class="do"><b>怎么做：</b>先定 Action/Trigger/Run 数据结构，再写顺序执行器；每个动作有独立状态；全部完成后汇总 success/partial/failed。</p>
+    </div>
+    <div class="diff hard">
+      <h4>2. 状态一致性 <span class="badge b-must">核心</span></h4>
+      <p class="why">首页、全屋、设备详情、我的页都在读同一批设备；任何一个页面写入后其他页面必须同步。</p>
+      <p class="do"><b>怎么做：</b>Pinia 单一数据源；页面只读派生数据；写操作统一走 command 层；持久化到 uni storage。</p>
+    </div>
+    <div class="diff mid">
+      <h4>3. 设备统一抽象</h4>
+      <p class="why">空调是温度圆盘，窗帘是滑杆，电视是方向键，净化器是模式按钮。每个设备写一个页面会失控。</p>
+      <p class="do"><b>怎么做：</b>capabilities 数组 + 控件注册表；页面负责头部状态区，控制区按能力渲染。</p>
+    </div>
+    <div class="diff mid">
+      <h4>4. 配网流程</h4>
+      <p class="why">真实配网涉及 BLE 广播、WiFi 下发、设备联网、云端注册、超时重试；演示需要可信的状态反馈。</p>
+      <p class="do"><b>怎么做：</b>状态机：idle → scanning → connecting → success/failed；扫描进度、18 秒倒计时、步骤逐项点亮、失败给排查建议。</p>
+    </div>
+    <div class="diff mid">
+      <h4>5. 平面图与图表</h4>
+      <p class="why">户型热点要跟着区域高亮；能耗图要能切换维度、标注峰值、给出排名。</p>
+      <p class="do"><b>怎么做：</b>底图 + 百分比坐标热点；点击标签同步高亮；uCharts 峰值标注，避免大图。</p>
+    </div>
+    <div class="diff">
+      <h4>6. 容易被低估的工作</h4>
+      <p class="why">空状态、加载骨架、失败重试、按钮 pending、滑动反馈、iPhone 安全区、不同屏宽。</p>
+      <p class="do"><b>怎么做：</b>把反馈组件做成基础设施；每个列表准备四态；最后两天专门做适配和动效。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 07 Demo ============ -->
+<section id="demo">
+  <div class="sec-head">
+    <div class="sec-no">07</div>
+    <div>
+      <h2>演示做到什么程度：B 级可交互</h2>
+      <p class="sec-sub">不是页面越多越好，而是核心链路越顺越好。</p>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>级别</th><th>目标</th><th>包含内容</th><th>工期</th><th>适合</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>A · 可点击原型</b></td>
+          <td>能翻页、能讲清流程</td>
+          <td>页面 + 跳转 + 静态假数据；按钮不真正改变状态</td>
+          <td class="num">2–3 天</td>
+          <td>只展示设计、时间极紧</td>
+        </tr>
+        <tr>
+          <td><b>B · 可交互演示</b> <span class="badge b-should">推荐</span></td>
+          <td>像真的 App 一样可用</td>
+          <td>状态可改、场景可执行、配网可模拟、图表可切换、刷新保留、操作有反馈</td>
+          <td class="num">7–14 天</td>
+          <td>课程设计、答辩、作品集</td>
+        </tr>
+        <tr>
+          <td><b>C · 完整 Demo</b></td>
+          <td>接近可交付产品</td>
+          <td>B 级 + 登录 + Node 后端 + SQLite + 多端同步 + 管理端</td>
+          <td class="num">3–4 周</td>
+          <td>毕业设计、创业验证</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>B 级演示的验收清单</h3>
+  <ul class="check">
+    <li>首页 3 秒内能找到正在运行的设备及其状态</li>
+    <li>四类设备都能控制：开关、温度、开合度、遥控</li>
+    <li>从首页到完成一次温度调节 ≤2 步</li>
+    <li>每次操作 300ms 内有 pending / 成功 / 失败反馈</li>
+    <li>执行场景后，相关设备状态真的变化</li>
+    <li>场景执行逐项显示状态，部分失败能看出是哪一项</li>
+    <li>自动/手动场景标签清晰，不看说明也能区分</li>
+    <li>配网有扫描进度、连接倒计时、步骤节点与失败引导</li>
+    <li>能耗图可切换今天/本周/本月，峰值与设备排名正确</li>
+    <li>「我的」页统计与首页设备数据一致</li>
+    <li>刷新页面后设备与场景状态不丢失</li>
+    <li>主流 iPhone / Android 机型不破版</li>
+    <li>关键操作有 loading、空状态、失败提示</li>
+    <li>埋点事件可在控制台还原一次完整操作链路</li>
+  </ul>
+
+  <h3>明确不做的事</h3>
+  <div class="grid-2">
+    <div class="card">
+      <h4>不要做</h4>
+      <p class="small">
+        真实蓝牙/WiFi 配网、真实设备控制、支付与订单、商品库存、消息推送、
+        地图定位、语音助手、多用户实时协作、应用商店上架。
+      </p>
+      <p class="small muted">这些每一项都能吞掉一周，但对演示效果提升很小。</p>
+    </div>
+    <div class="card">
+      <h4>用替代方案</h4>
+      <p class="small">
+        配网 → 状态机模拟；设备 → 模拟引擎；支付 → 静态按钮；推送 → 应用内消息；
+        后端 → Mock 适配器；多端 → uni storage。
+      </p>
+      <p class="small muted">把真实感做在状态反馈和一致性上，而不是真接硬件。</p>
+    </div>
+  </div>
+
+  <h3>5 分钟演示脚本</h3>
+  <div class="timeline">
+    <div class="tl"><b>0:00–0:30 首页</b><p>展示环境三指标、运行中的设备与进度；让观众指出「哪台在运行」，再点一个快捷开关，展示反馈。</p></div>
+    <div class="tl"><b>0:30–1:10 全屋控制</b><p>点平面图热点，区域高亮、标签同步；说明「空间 → 设备」的关联。</p></div>
+    <div class="tl"><b>1:10–2:00 设备控制</b><p>空调调温、窗帘拖到 46%、电视按方向键；强调核心数值、选中态与操作反馈。</p></div>
+    <div class="tl"><b>2:00–3:00 场景执行</b><p>进入「观影模式」，执行区固定按钮；点执行后逐项显示设备状态，最后汇总成功。</p></div>
+    <div class="tl"><b>3:00–3:45 添加设备</b><p>扫描进度 → 连接 18 秒 → 三个步骤点亮 → 成功；回到首页看到新设备。</p></div>
+    <div class="tl"><b>3:45–4:30 能耗</b><p>切换今天/本周/本月，指出峰值与最耗电设备；念出优化建议。</p></div>
+    <div class="tl"><b>4:30–5:00 我的与收尾</b><p>展示入口分组与家庭统计；最后讲架构、状态模型和埋点指标。</p></div>
+  </div>
+
+  <div class="note">
+    <strong>演示数据策略：</strong>
+    固定 seed + 定时波动 + 可选随机失败。温度在 25–27℃ 缓慢变化，PM2.5 在 20–60 波动，
+    清洁进度每 2 秒 +1%，配网有 10% 概率失败用于展示异常态。这样既稳定又有真实感。
+  </div>
+</section>
+
+<!-- ============ 08 Architecture ============ -->
+<section id="architecture">
+  <div class="sec-head">
+    <div class="sec-no">08</div>
+    <div>
+      <h2>前后台怎么区分，分别做成什么</h2>
+      <p class="sec-sub">先把三个词说清楚：前台、后台、服务端。</p>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>叫法</th><th>是什么</th><th>谁用</th><th>演示要不要</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>前台 / 用户端</b></td>
+          <td>微信小程序为主，H5/App 为副产物，面向业主和家庭成员</td>
+          <td>普通用户</td>
+          <td><span class="badge b-must">必须</span></td>
+        </tr>
+        <tr>
+          <td><b>后台 / 管理端</b></td>
+          <td>PC 网页，管理设备型号、用户、内容、报表</td>
+          <td>运营/管理员</td>
+          <td><span class="badge b-later">可选</span></td>
+        </tr>
+        <tr>
+          <td><b>服务端 / API</b></td>
+          <td>业务逻辑与数据接口，不是「后台页面」</td>
+          <td>前台调用</td>
+          <td><span class="badge b-should">Mock 可替代</span></td>
+        </tr>
+        <tr>
+          <td><b>设备模拟引擎</b></td>
+          <td>生成设备状态、能耗、告警的假数据服务</td>
+          <td>开发/演示</td>
+          <td><span class="badge b-should">建议有</span></td>
+        </tr>
+        <tr>
+          <td><b>埋点 / 指标</b></td>
+          <td>记录操作路径与耗时，验证 UX 目标</td>
+          <td>开发/设计</td>
+          <td><span class="badge b-should">建议有</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>概念区分：</strong>
+    「前台/后台」说的是<b>给谁用</b>（用户端 vs 管理端）；
+    「前端/后端」说的是<b>代码跑在哪</b>（浏览器/手机 vs 服务器）。
+    演示项目通常只做前台（前端），后台管理端可以完全不碰。
+  </div>
+
+  <div class="arch">
+    <div class="arch-split">
+      <div class="arch-layer">
+        <div class="name">前台 · 用户端</div>
+        <div class="desc">首页 / 全屋 / 设备 / 场景 / 配网 / 能耗 / 我的</div>
+        <p class="small muted" style="margin:8px 0 0">演示必做。微信小程序，按 750rpx 设计。</p>
+      </div>
+      <div class="arch-layer">
+        <div class="name">后台 · 管理端</div>
+        <div class="desc">设备型号、家庭用户、场景模板、内容、报表</div>
+        <p class="small muted" style="margin:8px 0 0">演示可省；如果答辩要求，只做 3 个只读列表页。</p>
+      </div>
+    </div>
+    <div class="arrow"><b>↓</b>都调用同一套 API</div>
+    <div class="arch-layer">
+      <div class="name">服务端 · API</div>
+      <div class="desc">/devices /rooms /scenes /energy /users /families</div>
+      <p class="small muted" style="margin:8px 0 0">演示阶段用前端 Mock 实现同样的接口形状，后续替换 baseURL 即可。</p>
+    </div>
+    <div class="arrow"><b>↓</b></div>
+    <div class="arch-layer">
+      <div class="name">数据与设备层</div>
+      <div class="desc">SQLite / PostgreSQL · 设备影子 · MQTT · 真实网关</div>
+    </div>
+  </div>
+
+  <p class="mt14">
+    <b>建议：</b>演示版本只做前台 + 前端 Mock。把 API 层写成可替换的适配器，
+    这样老师问「后端呢」时，你可以展示接口设计和模拟引擎，而不是一个半成品服务器。
+  </p>
+</section>
+
+<!-- ============ 09 Database ============ -->
+<section id="database">
+  <div class="sec-head">
+    <div class="sec-no">09</div>
+    <div>
+      <h2>数据模型：状态、执行、事件三张网</h2>
+      <p class="sec-sub">数据库不是重点，建模才是。</p>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>场景</th><th>需要数据库？</th><th>推荐方案</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td><b>纯前端演示</b></td><td>不需要</td><td>uni storage / JSON seed</td><td>单机、无并发、刷新不丢即可</td></tr>
+        <tr><td><b>带轻后端</b></td><td>需要</td><td>SQLite + Prisma / better-sqlite3</td><td>零部署、单文件、够用</td></tr>
+        <tr><td><b>真实产品</b></td><td>必须</td><td>PostgreSQL/MySQL + Redis + 时序库</td><td>并发、权限、实时状态、能耗数据量</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>核心表</h3>
+  <div class="table-wrap small-table">
+    <table>
+      <thead><tr><th>表</th><th>关键字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><b>user</b></td><td>id, phone, nickname, avatar, vip_expire</td><td>账号与会员</td></tr>
+        <tr><td><b>family</b></td><td>id, name, owner_id, created_at</td><td>家庭</td></tr>
+        <tr><td><b>family_member</b></td><td>family_id, user_id, role</td><td>成员与权限（owner/admin/member）</td></tr>
+        <tr><td><b>home</b></td><td>id, family_id, name, address, cover</td><td>住宅，可多套</td></tr>
+        <tr><td><b>room</b></td><td>id, home_id, name, sort</td><td>房间</td></tr>
+        <tr><td><b>device_model</b></td><td>id, brand, name, category, capabilities_json, image</td><td>设备型号/能力模板</td></tr>
+        <tr><td><b>device</b></td><td>id, home_id, room_id, model_id, name, online, state_json, state_updated_at, x, y</td><td>设备实例；state_json 存能力状态</td></tr>
+        <tr><td><b>scene</b></td><td>id, home_id, name, cover, mode, enabled, effective_json</td><td>场景；mode 区分自动/手动</td></tr>
+        <tr><td><b>scene_action</b></td><td>id, scene_id, device_id, command, params_json, delay_ms, sort</td><td>场景动作</td></tr>
+        <tr><td><b>scene_trigger</b></td><td>id, scene_id, type, config_json</td><td>手动/定时/条件触发</td></tr>
+        <tr><td><b>scene_run</b></td><td>id, scene_id, status, started_at, finished_at</td><td>一次执行</td></tr>
+        <tr><td><b>scene_run_action</b></td><td>id, run_id, action_id, status, message</td><td>逐项执行结果</td></tr>
+        <tr><td><b>energy_record</b></td><td>id, device_id, ts, kwh</td><td>时序数据，按天/小时聚合</td></tr>
+        <tr><td><b>event_log</b></td><td>id, user_id, name, props_json, ts</td><td>埋点与指标</td></tr>
+        <tr><td><b>notification</b></td><td>id, user_id, type, content, read, created_at</td><td>消息与告警</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>最小可用 SQL</h4>
+<pre><span class="k">CREATE TABLE</span> device (
+  id                TEXT <span class="k">PRIMARY KEY</span>,
+  home_id           TEXT <span class="k">NOT NULL</span>,
+  room_id           TEXT,
+  model_id          TEXT <span class="k">NOT NULL</span>,
+  name              TEXT <span class="k">NOT NULL</span>,
+  online            <span class="k">INTEGER</span> <span class="k">DEFAULT</span> 0,
+  state_json        TEXT <span class="k">DEFAULT</span> <span class="c">'{}'</span>,
+  state_updated_at  <span class="k">INTEGER</span>,
+  x                 <span class="k">REAL</span>,
+  y                 <span class="k">REAL</span>,
+  created_at        TEXT <span class="k">DEFAULT</span> CURRENT_TIMESTAMP
+);
+
+<span class="k">CREATE TABLE</span> scene_run (
+  id           TEXT <span class="k">PRIMARY KEY</span>,
+  scene_id     TEXT <span class="k">NOT NULL</span>,
+  status       TEXT <span class="k">NOT NULL</span>,   <span class="c">-- running/success/partial/failed</span>
+  started_at   <span class="k">INTEGER</span> <span class="k">NOT NULL</span>,
+  finished_at  <span class="k">INTEGER</span>
+);
+
+<span class="k">CREATE TABLE</span> energy_record (
+  id         <span class="k">INTEGER</span> <span class="k">PRIMARY KEY AUTOINCREMENT</span>,
+  device_id  TEXT <span class="k">NOT NULL</span>,
+  ts         <span class="k">INTEGER</span> <span class="k">NOT NULL</span>,
+  kwh        <span class="k">REAL</span> <span class="k">NOT NULL</span>
+);
+</pre>
+
+  <div class="note">
+    <strong>设计要点：</strong>
+    设备状态不要一个属性一列，用 <code class="inline">state_json</code> 存能力状态，新增品类不用改表；
+    场景执行要留 run 与逐项 action 记录，才能展示「部分失败」；能耗是只追加的时序数据；
+    真实产品再加设备影子（desired/reported）和 Redis 缓存。
+  </div>
+</section>
+
+<!-- ============ 10 Design Input ============ -->
+<section id="design-input">
+  <div class="sec-head">
+    <div class="sec-no">10</div>
+    <div>
+      <h2>设计输入：只有图片，没有 Figma 怎么开发</h2>
+      <p class="sec-sub">图片足够开工；Figma MCP 是加分项，不是前置条件。</p>
+    </div>
+  </div>
+
+  <p class="lead">
+    当前输入是 13 张 750×1624 JPG，没有 Figma 文件。可以直接开发高保真、可交互的小程序 Demo；
+    差别在精度和返工量，不在能不能做。
+  </p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>图片能提供</h4>
+      <ul class="small" style="margin:6px 0 0;padding-left:18px">
+        <li>页面结构、信息层级、模块顺序</li>
+        <li>大致间距、圆角、字号比例</li>
+        <li>组件形态、选中/未选中状态</li>
+        <li>图标/插画风格、页面跳转关系（可推断）</li>
+        <li>响应式意图（可推断）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>图片不能提供</h4>
+      <ul class="small" style="margin:6px 0 0;padding-left:18px">
+        <li>精确色值（JPG 有压缩偏色）</li>
+        <li>精确字体、字重、行高</li>
+        <li>组件变体与 hover/pressed/disabled 状态</li>
+        <li>矢量图标、产品抠图、背景素材</li>
+        <li>转场、手势、加载/失败态</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Figma MCP 能多给什么</h3>
+  <p class="small">如果以后有 Figma 文件，MCP 可以直接读取：</p>
+  <ul class="check">
+    <li>节点树与图层结构，减少元素归属猜测</li>
+    <li>精确颜色、字号、字重、行高、间距、圆角、阴影</li>
+    <li>组件与变体（默认/选中/禁用/加载）</li>
+    <li>原始矢量图标和图片资源，不用重画</li>
+    <li>原型连线，明确点击后去哪、用什么转场</li>
+  </ul>
+  <p class="small muted">但它需要 Figma 文件链接与授权。现在只有图片，这条路暂时用不上，也不影响开工。</p>
+
+  <h3>这套设计稿的判断</h3>
+  <p>
+    750×1624 JPG 基本是 <b>375×812 逻辑像素 @2x</b>，正好对应小程序 <b>750rpx</b> 设计宽度：
+    设计稿 1px ≈ 1rpx，字号、间距可以直接按图量。13 张图覆盖首页、全屋、4 类设备、场景、配网、能耗、我的，
+    信息足够搭出完整闭环。
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>缺口</th><th>影响</th><th>处理方式</th></tr></thead>
+      <tbody>
+        <tr><td><b>产品抠图</b></td><td>图里带背景，直接裁会有底</td><td>用户提供透明底素材；否则用同色底占位/重绘</td></tr>
+        <tr><td><b>图标</b></td><td>Tab 与功能图标无法从 JPG 取出矢量</td><td>用 iconfont 或同风格图标库重画</td></tr>
+        <tr><td><b>字体</b></td><td>设计稿字体/字重不确定</td><td>小程序用系统字体，按视觉微调字重</td></tr>
+        <tr><td><b>渐变/阴影</b></td><td>参数不可见</td><td>按图试值，统一成 token</td></tr>
+        <tr><td><b>交互状态</b></td><td>静态图没有 loading/失败/选中</td><td>按产品逻辑补，并标注为假设</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>从图片开发的工作流</h3>
+  <div class="timeline">
+    <div class="tl"><b>1. 图像审计</b><p>确认逻辑尺寸、安全区、状态栏高度、可复用区域。</p></div>
+    <div class="tl"><b>2. 取色与测量</b><p>用脚本采样主色、背景、文字色、卡片色；量间距、圆角、字号比例。</p></div>
+    <div class="tl"><b>3. 设计令牌</b><p>输出 <code class="inline">tokens.scss</code>（颜色、字号、间距、圆角、阴影），先统一再写页面。</p></div>
+    <div class="tl"><b>4. 组件清单</b><p>TabBar、NavBar、Card、Stat、DeviceCard、SceneCard、Sheet、Empty、Toast。</p></div>
+    <div class="tl"><b>5. 页面骨架</b><p>先搭 5 个 Tab 和核心页面，用假数据跑通跳转。</p></div>
+    <div class="tl"><b>6. 状态与交互</b><p>补 loading、空、失败、选中、执行中；图里没有的按产品逻辑补，并标注假设。</p></div>
+    <div class="tl"><b>7. 截图对比</b><p>用开发者工具截图，与原图并排比对，逐轮修间距和字号。</p></div>
+  </div>
+
+  <h3>需要你补充的信息</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>信息</th><th>为什么需要</th><th>没有时怎么办</th></tr></thead>
+      <tbody>
+        <tr><td><b>范围</b></td><td>决定做 Demo 还是接近上线</td><td>默认 B 级可交互 Demo</td></tr>
+        <tr><td><b>品牌名/商标</b></td><td>避免公开演示的商标风险</td><td>替换小米/Redmi/小吉为虚构品牌</td></tr>
+        <tr><td><b>产品图/图标/Logo</b></td><td>决定还原度与工作量</td><td>占位图、重绘或同风格素材</td></tr>
+        <tr><td><b>关键交互</b></td><td>静态图看不出点击后去哪</td><td>按常见产品逻辑补，标注为假设</td></tr>
+        <tr><td><b>设计规范</b></td><td>减少取色/字号误差</td><td>从 JPG 采样并统一成 token</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>结论：</strong>
+    没有 Figma 完全可以开发；这套图足够做高保真、可交互的小程序 Demo。
+    Figma MCP 能把「猜」变成「读」，但不是必需。若目标是像素级上线，补一份设计规范（色值、字号、间距、组件状态）
+    比补 Figma 更实际。
+  </div>
+</section>
+
+<!-- ============ 11 Roadmap ============ -->
+<section id="roadmap">
+  <div class="sec-head">
+    <div class="sec-no">11</div>
+    <div>
+      <h2>实施路线与风险</h2>
+      <p class="sec-sub">决定能不能按时演示的，往往不是技术。</p>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>1. 先做设计系统</h4>
+      <p class="small">花 1–2 天把颜色、字号、间距、圆角、阴影抽成 SCSS 变量/rpx，做 6–8 个通用组件。后面每页拼装，返工率低很多。</p>
+    </div>
+    <div class="card">
+      <h4>2. 先做状态层与反馈层</h4>
+      <p class="small">页面可以后写，状态模型和命令/反馈机制必须先定。否则每加一个页面就多一份状态。</p>
+    </div>
+    <div class="card">
+      <h4>3. 组件库先行</h4>
+      <p class="small">加一个开发专用页面（pages.json 注册），把组件和四态摆出来。改样式只改一处，也方便检查一致性。</p>
+    </div>
+    <div class="card">
+      <h4>4. 模拟引擎制造真实感</h4>
+      <p class="small">温度缓慢变化、PM2.5 波动、进度增长、随机离线。演示的真实感主要来自这里，不是页面数量。</p>
+    </div>
+    <div class="card">
+      <h4>5. 人为制造网络延迟</h4>
+      <p class="small">所有模拟接口加 300–800ms 延迟，配合 loading 和骨架屏；瞬间响应反而不像真实产品。</p>
+    </div>
+    <div class="card">
+      <h4>6. 从第一天开始埋点</h4>
+      <p class="small">设备曝光、控制开始/确认/失败、场景执行、配网步骤。最后补埋点一定会漏关键节点。</p>
+    </div>
+    <div class="card">
+      <h4>7. 按 750rpx 写样式</h4>
+      <p class="small">设计稿 750×1624 JPG 直接按 750rpx 写，1 设计 px ≈ 1rpx；底部 TabBar 加 <code class="inline">safe-area-inset-bottom</code>。</p>
+    </div>
+    <div class="card">
+      <h4>8. 商标与素材合规</h4>
+      <p class="small">公开演示前，把「小米」「Redmi」「小吉」替换为虚构品牌；产品图自己拍或使用可商用素材。</p>
+    </div>
+  </div>
+
+  <h3>两周实施路线</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>时间</th><th>任务</th><th>产出</th></tr></thead>
+      <tbody>
+        <tr><td class="num">D1</td><td>页面清单、设计令牌、状态模型、路由表、埋点事件表</td><td>可执行的开发计划</td></tr>
+        <tr><td class="num">D2</td><td>uni-app CLI 脚手架、TabBar、通用组件、Mock 数据、反馈组件</td><td>能跑的空壳 App</td></tr>
+        <tr><td class="num">D3–D4</td><td>首页、环境指标、设备卡片、房间筛选、运行状态</td><td>首页可交互</td></tr>
+        <tr><td class="num">D5–D6</td><td>四类设备控制 + 能力注册表 + 命令三态</td><td>设备控制闭环</td></tr>
+        <tr><td class="num">D7–D8</td><td>场景列表、详情、动作编排、执行器、逐项状态</td><td>场景可执行</td></tr>
+        <tr><td class="num">D9</td><td>添加设备扫描、连接状态机、批量添加、失败引导</td><td>配网模拟完成</td></tr>
+        <tr><td class="num">D10</td><td>全屋平面图、热点联动、能耗图表、设备排名</td><td>空间与数据页完成</td></tr>
+        <tr><td class="num">D11</td><td>我的、家庭、设置、消息、商城/发现静态页</td><td>信息架构完整</td></tr>
+        <tr><td class="num">D12</td><td>状态持久化、异常态、数据一致性、反馈细节</td><td>刷新不丢、错误可控</td></tr>
+        <tr><td class="num">D13</td><td>分包与主包体积、真机测试、适配、动效、性能、埋点校验</td><td>体验版可运行</td></tr>
+        <tr><td class="num">D14</td><td>演示脚本、录屏、README、架构图、体验版二维码、验收记录</td><td>可交付</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>风险清单</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>风险</th><th>表现</th><th>对策</th></tr></thead>
+      <tbody>
+        <tr><td><b>范围蔓延</b></td><td>商城、发现、健康生活都想做</td><td>先锁定核心闭环，其余入口只做静态页</td></tr>
+        <tr><td><b>照搬设计稿但状态不联动</b></td><td>首页显示运行，设备页却是关闭</td><td>单一数据源 + 派生数据，所有页面读同一份 store</td></tr>
+        <tr><td><b>UI 完美主义</b></td><td>一个圆角调半天</td><td>先跑通流程，最后两天统一打磨</td></tr>
+        <tr><td><b>真实硬件诱惑</b></td><td>花一周调蓝牙，演示还是连不上</td><td>演示阶段明确用模拟，接口留好即可</td></tr>
+        <tr><td><b>后端过度设计</b></td><td>搭登录、权限、微服务</td><td>Mock 优先，SQLite 兜底，不做分布式</td></tr>
+        <tr><td><b>反馈缺失</b></td><td>点了没反应、重复点击、误判失败</td><td>命令三态 + 300ms 反馈 + 失败重试</td></tr>
+        <tr><td><b>伪造指标</b></td><td>把 PDF2 的数据说成自己实测</td><td>标注来源；如需实测，用 5 人任务测试并如实记录</td></tr>
+        <tr><td><b>演示环境</b></td><td>现场网络差、投屏比例不对</td><td>本地构建、离线可用、提前录屏备份</td></tr>
+        <tr><td><b>主包超过 2MB</b></td><td>图片/组件太多，上传失败</td><td>分包、压缩图片、CDN、按需引入 UI 组件</td></tr>
+        <tr><td><b>小程序审核/域名/类目</b></td><td>请求被拦、无法发布</td><td>提前配置 request 域名白名单、HTTPS、隐私协议；演示用体验版</td></tr>
+        <tr><td><b>真机兼容</b></td><td>iOS/Android 样式差异、BLE 权限问题</td><td>真机测试；避免依赖 Web API；BLE 准备模拟降级</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>交付物建议：</strong>
+    源码 + README（启动方式、技术栈、目录说明）+ 架构图 + 数据模型 + 5 分钟演示脚本 +
+    关键页面截图/GIF + 埋点事件表 + 微信体验版二维码 + 已知限制。老师或面试官通常先看 README 和演示，再翻代码。
+  </div>
+
+  <p class="small muted">
+    如果目标是真实产品而不是演示，还需要补：设备接入协议（WiFi/BLE/Zigbee/Matter）、云端与网关、
+    账号与家庭权限、消息推送、隐私合规、硬件兼容性测试。那是另一个量级的项目，不应和演示版本混在一起。
+  </p>
+</section>
+
+<!-- ============ 12 Appendix ============ -->
+<section id="appendix">
+  <div class="sec-head">
+    <div class="sec-no">12</div>
+    <div>
+      <h2>附录：材料、设计稿与术语</h2>
+      <p class="sec-sub">让报告可追溯。</p>
+    </div>
+  </div>
+
+  <h3>输入材料</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>材料</th><th>提供的信息</th><th>在报告中的用途</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>《C端-智能终端中控-家居工具项目（优化版）》</b></td>
+          <td>产品定位、六大功能模块、五类用户痛点、页面说明</td>
+          <td>产品定义、功能拆解、痛点归因</td>
+        </tr>
+        <tr>
+          <td><b>《蚁玉梅 UX 19867812392》</b></td>
+          <td>体验优化案例：研究过程、设计策略、页面级 before/after、量化指标</td>
+          <td>体验拆解、验收任务、开发规范</td>
+        </tr>
+        <tr>
+          <td><b>「第二版」13 张 JPG 设计稿（无 Figma）</b></td>
+          <td>具体页面、控件、信息层级、视觉语言</td>
+          <td>页面清单、组件拆分、演示范围</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>设计稿一览</h3>
+  <p class="small muted">点击图片可在新标签页查看原图。缩略图为裁切预览，完整界面请打开原图。</p>
+  <div class="gallery">
+    <figure class="shot"><a href="第二版/首页1.0.jpg" target="_blank" rel="noopener"><img src="第二版/首页1.0.jpg" alt="首页设计稿" loading="lazy"></a><figcaption class="cap"><b>首页</b><span>环境指标 · 运行设备 · 快捷开关</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/全屋智能.jpg" target="_blank" rel="noopener"><img src="第二版/全屋智能.jpg" alt="全屋智能设计稿" loading="lazy"></a><figcaption class="cap"><b>全屋智能</b><span>平面图 · 能耗洞察 · 舒适预设</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/智能空调.jpg" target="_blank" rel="noopener"><img src="第二版/智能空调.jpg" alt="空调控制设计稿" loading="lazy"></a><figcaption class="cap"><b>智能空调</b><span>温度圆盘 · 模式/风向/风速</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/智能窗帘.jpg" target="_blank" rel="noopener"><img src="第二版/智能窗帘.jpg" alt="窗帘控制设计稿" loading="lazy"></a><figcaption class="cap"><b>智能窗帘</b><span>开合度 · 打开/暂停/关闭</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/智能电视.jpg" target="_blank" rel="noopener"><img src="第二版/智能电视.jpg" alt="电视遥控设计稿" loading="lazy"></a><figcaption class="cap"><b>智能电视</b><span>方向键遥控 · 音量</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/净化器.jpg" target="_blank" rel="noopener"><img src="第二版/净化器.jpg" alt="净化器控制设计稿" loading="lazy"></a><figcaption class="cap"><b>净化器</b><span>PM2.5 · 自动/最爱/睡眠</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/添加设备1.jpg" target="_blank" rel="noopener"><img src="第二版/添加设备1.jpg" alt="添加设备设计稿" loading="lazy"></a><figcaption class="cap"><b>添加设备</b><span>附近扫描 · 批量添加</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/添加设备3.jpg" target="_blank" rel="noopener"><img src="第二版/添加设备3.jpg" alt="设备连接设计稿" loading="lazy"></a><figcaption class="cap"><b>设备连接</b><span>配网倒计时 · 步骤反馈</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/添加场景1.jpg" target="_blank" rel="noopener"><img src="第二版/添加场景1.jpg" alt="场景列表设计稿" loading="lazy"></a><figcaption class="cap"><b>场景列表</b><span>常用场景 · 推荐/自定义</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/添加场景2.jpg" target="_blank" rel="noopener"><img src="第二版/添加场景2.jpg" alt="场景详情设计稿" loading="lazy"></a><figcaption class="cap"><b>场景详情</b><span>动作编排 · 触发条件</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/清洁模式.jpg" target="_blank" rel="noopener"><img src="第二版/清洁模式.jpg" alt="清洁模式设计稿" loading="lazy"></a><figcaption class="cap"><b>清洁模式</b><span>多设备联动 · 执行进度</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/电量统计.jpg" target="_blank" rel="noopener"><img src="第二版/电量统计.jpg" alt="电量统计设计稿" loading="lazy"></a><figcaption class="cap"><b>电量统计</b><span>趋势图 · 电费/碳排 · 排名</span></figcaption></figure>
+    <figure class="shot"><a href="第二版/我的.jpg" target="_blank" rel="noopener"><img src="第二版/我的.jpg" alt="个人中心设计稿" loading="lazy"></a><figcaption class="cap"><b>我的</b><span>家庭统计 · 会员 · 服务入口</span></figcaption></figure>
+  </div>
+
+  <h3>术语</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>术语</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td><b>能力模型</b></td><td>用 capabilities 描述设备支持哪些控制，如开关、温度、开合度、遥控；控件按能力渲染</td></tr>
+        <tr><td><b>设备影子</b></td><td>云端保存的设备期望状态与上报状态，用于离线与弱网场景</td></tr>
+        <tr><td><b>配网</b></td><td>把设备接入家庭 WiFi 并绑定到账号的过程，通常含蓝牙发现、WiFi 下发、云端注册</td></tr>
+        <tr><td><b>乐观更新</b></td><td>先更新 UI，再等服务端确认；失败时回滚</td></tr>
+        <tr><td><b>KR</b></td><td>Key Result，可量化的关键结果，如「状态识别耗时下降 30%」</td></tr>
+        <tr><td><b>场景执行器</b></td><td>按顺序执行场景动作、记录逐项状态、处理失败的运行时</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+  <p class="small muted">
+    说明：本报告基于 13 张 JPG 设计稿与两份 PDF 文档推断，未包含商业目标、硬件方案与完整需求文档。
+    技术选型以「个人或小团队在 2–4 周内做出可演示产品」为前提；PDF2 的量化数据属于设计团队的验证结果，
+    本报告仅将其作为设计目标与验收任务引用。技术路线为 uni-app + Vue 3 微信小程序优先；设计输入只有 13 张 JPG，无 Figma 文件。
+  </p>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <b>全屋智能小程序 · 产品与开发分析报告</b><br>
+    输入：13 张设计稿 + 2 份产品/UX 文档 · 输出：产品理解、体验拆解、技术选型与实施建议
+  </div>
+</footer>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  if (!('IntersectionObserver' in window)) return;
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      links.forEach(function (a) { a.classList.remove('active'); });
+      var a = map[en.target.id];
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+  document.querySelectorAll('main section[id]').forEach(function (s) { obs.observe(s); });
+})();
+</script>
+</body>
+</html>

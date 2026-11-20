@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P5 · 联调与交付</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">Phase 5 · Integration &amp; Delivery</p>
+        <h1>P5 · 联调、测试与交付</h1>
+        <p class="lead">
+          目标：从“各模块能跑”到“端到端可演示、可部署、可复现”。T0 全链路必须通过，
+          T1 至少证明开发板 → 手机小程序 → 服务端；最后交付体验版与演示脚本。
+        </p>
+        <div class="meta">
+          <span class="chip">5–6 天</span>
+          <span class="chip">T0 / T1</span>
+          <span class="chip">E2E</span>
+          <span class="chip">安全 / 性能</span>
+          <span class="chip">体验版</span>
+        </div>
+      </div>
+
+      <h2 id="goal">1. 阶段目标</h2>
+      <ul class="checklist">
+        <li>T0 单机全链路全部通过</li>
+        <li>T1 ESP32 至少扫描/连接/读取/配网/遥测/命令</li>
+        <li>登录 → 添加 → 控制 → 场景 → 后台可见 端到端通过</li>
+        <li>权限/安全/性能检查通过</li>
+        <li>Docker/本机部署可复现</li>
+        <li>微信体验版二维码可用</li>
+        <li>演示脚本一次走通，文档齐全</li>
+      </ul>
+
+      <h2 id="pre">2. 前置条件</h2>
+      <p><a href="phase-3-小程序前台.html">P3</a> 与 <a href="phase-4-管理后台.html">P4</a> 核心功能完成；P2 信号链路可用。</p>
+
+      <h2 id="wbs">3. WBS</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>任务</th><th>产出</th></tr></thead>
+          <tbody>
+            <tr><td class="num">D1</td><td>T0 全链路：启动、扫描、配网、绑定、遥测、命令、场景、重启</td><td>T0 报告</td></tr>
+            <tr><td class="num">D2</td><td>T1 ESP32：广播、连接、FFF1/FFF2、MQTT、FFF4/FFF5</td><td>T1 报告</td></tr>
+            <tr><td class="num">D3</td><td>E2E：Playwright 后台 + 小程序核心流程；边界/异常</td><td>E2E 通过</td></tr>
+            <tr><td class="num">D4</td><td>安全（JWT/RBAC/限流/输入）、性能（列表/WS）</td><td>检查报告</td></tr>
+            <tr><td class="num">D5</td><td>Docker/本机部署；HTTPS/域名/体验版</td><td>可扫码</td></tr>
+            <tr><td class="num">D6</td><td>演示脚本、录屏、README、架构图、已知限制</td><td>可交付</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="t0">4. T0 验收</h2>
+      <ul class="checklist">
+        <li>一键启动，健康检查全绿</li>
+        <li>虚拟扫描 5s、连接 10s</li>
+        <li>配网/绑定落库，归属正确</li>
+        <li>遥测 2s 推送，命令 1s ack</li>
+        <li>场景逐项状态，run 日志</li>
+        <li>断连/重启恢复，异常有反馈</li>
+      </ul>
+
+      <h2 id="t1">5. T1 验收</h2>
+      <ul class="checklist">
+        <li>手机扫描到板子与 Service UUID</li>
+        <li>连接并读 FFF1</li>
+        <li>写 FFF2 配网，MQTT 上线</li>
+        <li>订阅 FFF4/FFF5，写 FFF3 有 ack</li>
+        <li>断连/重连/错误 token 有反馈</li>
+        <li>PC 侧 bleak 或手机至少一条链路可复现</li>
+      </ul>
+
+      <h2 id="e2e">6. 端到端场景</h2>
+      <div class="flow">
+        <span class="step">管理员建型号</span><span class="sep">→</span>
+        <span class="step">用户登录</span><span class="sep">→</span>
+        <span class="step">添加设备</span><span class="sep">→</span>
+        <span class="step">绑定家庭</span><span class="sep">→</span>
+        <span class="step">控制设备</span><span class="sep">→</span>
+        <span class="step">执行场景</span><span class="sep">→</span>
+        <span class="step">后台看日志/审计</span>
+      </div>
+
+      <h2 id="security">7. 安全与性能</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>安全</h3>
+          <ul class="small">
+            <li>越权/未登录/过期 token</li>
+            <li>命令归属校验、配网 token 重放</li>
+            <li>限流、输入校验、错误脱敏</li>
+            <li>依赖漏洞扫描</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>性能</h3>
+          <ul class="small">
+            <li>设备列表 200 条分页</li>
+            <li>WS 100 连接/遥测频率</li>
+            <li>命令成功率/延迟</li>
+            <li>小程序首屏/图片体积</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 id="delivery">8. 交付物</h2>
+      <ul class="small">
+        <li>源码 + README + 启动脚本 + 环境记录</li>
+        <li>OpenAPI/数据字典/架构图</li>
+        <li>T0/T1 测试报告与失败结论</li>
+        <li>体验版二维码 / 演示录屏</li>
+        <li>5–10 分钟演示脚本</li>
+        <li>已知限制与后续路线</li>
+      </ul>
+
+      <h2 id="acceptance">9. 验收标准</h2>
+      <ul class="checklist">
+        <li>新人按 README 可启动</li>
+        <li>体验版扫码可用</li>
+        <li>T0 全绿；T1 至少 1.1–1.4</li>
+        <li>端到端流程一次走通</li>
+        <li>安全/性能无阻断问题</li>
+        <li>演示脚本/录屏/文档齐全</li>
+      </ul>
+
+      <h2 id="next">10. 收尾</h2>
+      <p>P5 完成后进入维护/迭代：真实硬件适配、更多设备型号、场景模板、运营功能。计划文档随实现更新，不保留过期描述。</p>
+
+      <div class="page-nav">
+        <a class="prev" href="phase-4-管理后台.html">← 上一份<b>P4 · 管理后台</b></a>
+        <a class="next" href="index.html">回到总览<b>总览与导航 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>P5 · 联调、测试与交付</b></span>
+      <span>T0/T1、E2E、安全、部署、演示</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

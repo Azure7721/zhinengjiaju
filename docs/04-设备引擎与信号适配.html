@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · 设备引擎与信号适配</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">04 · Device Engine</p>
+        <h1>设备引擎与信号适配</h1>
+        <p class="lead">
+          设备不是一个页面，而是“型号 + 能力 + 状态 + 命令 + 传输”的组合。
+          本文档定义可扩展的设备模型、适配器接口、模拟引擎、虚拟 BLE、MQTT 主题与配网状态机。
+        </p>
+        <div class="meta">
+          <span class="chip">能力模型</span>
+          <span class="chip">Adapter 模式</span>
+          <span class="chip">MQTT</span>
+          <span class="chip">虚拟 BLE</span>
+          <span class="chip amber">T0 + T1</span>
+        </div>
+      </div>
+
+      <h2 id="goals">1. 设计目标</h2>
+      <ul>
+        <li>新增设备类型/能力不复制页面、不改核心业务。</li>
+        <li>设备信号来自引擎/硬件，不是前端定时器。</li>
+        <li>命令有幂等、超时、重试、回执、审计。</li>
+        <li>同一套业务代码支持 Mock、虚拟 BLE、MQTT、真实 BLE。</li>
+        <li>配网、绑定、解绑、离线、重连都有明确状态。</li>
+      </ul>
+
+      <h2 id="model">2. 设备模型与能力</h2>
+      <h3>2.1 三层对象</h3>
+      <div class="grid-3">
+        <div class="card teal"><h3>DeviceModel</h3><p class="small">型号/品类/能力/命令元数据，管理员维护，所有实例共享。</p></div>
+        <div class="card teal"><h3>Device</h3><p class="small">具体实例：serial、home/room、在线状态、绑定关系。</p></div>
+        <div class="card teal"><h3>DeviceState</h3><p class="small">最新状态（设备影子）：power、temperature、position、pm25、progress…</p></div>
+      </div>
+
+      <h3>2.2 capabilities 示例</h3>
+<pre>{
+  "model": "curtain.v1",
+  "name": "智能窗帘",
+  "category": "cover",
+  "capabilities": [
+    { "key": "switch", "type": "boolean", "control": "switch" },
+    { "key": "position", "type": "number", "min": 0, "max": 100, "unit": "%", "control": "slider" },
+    { "key": "mode", "type": "enum", "values": ["open", "pause", "close"], "control": "segmented" }
+  ],
+  "commands": [
+    { "name": "setPosition", "params": { "value": "number" } },
+    { "name": "setMode", "params": { "value": "enum" } }
+  ]
+}
+</pre>
+
+      <h3>2.3 能力注册表</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>capability</th><th>控件</th><th>状态</th><th>命令</th></tr></thead>
+          <tbody>
+            <tr><td>switch</td><td>开关</td><td>power</td><td>setPower</td></tr>
+            <tr><td>temperature</td><td>圆盘/加减</td><td>targetTemp/currentTemp</td><td>setTemperature</td></tr>
+            <tr><td>position</td><td>滑杆</td><td>position</td><td>setPosition</td></tr>
+            <tr><td>mode</td><td>分段</td><td>mode</td><td>setMode</td></tr>
+            <tr><td>fanSpeed</td><td>分段/滑杆</td><td>fanSpeed</td><td>setFanSpeed</td></tr>
+            <tr><td>remote</td><td>方向键</td><td>lastKey</td><td>sendKey</td></tr>
+            <tr><td>pm25</td><td>数值</td><td>pm25</td><td>—</td></tr>
+            <tr><td>brightness</td><td>滑杆</td><td>brightness</td><td>setBrightness</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="lifecycle">3. 设备生命周期</h2>
+      <div class="flow">
+        <span class="step">注册型号</span><span class="sep">→</span>
+        <span class="step">发现/扫描</span><span class="sep">→</span>
+        <span class="step">连接</span><span class="sep">→</span>
+        <span class="step">配网</span><span class="sep">→</span>
+        <span class="step">绑定账号/家庭</span><span class="sep">→</span>
+        <span class="step">在线</span><span class="sep">→</span>
+        <span class="step">控制/遥测</span><span class="sep">→</span>
+        <span class="step">离线/解绑</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>状态</th><th>触发</th><th>UI 表现</th><th>后端动作</th></tr></thead>
+          <tbody>
+            <tr><td>unprovisioned</td><td>新设备/未配网</td><td>可发现，不可控制</td><td>创建配网会话</td></tr>
+            <tr><td>connecting</td><td>手机连接 BLE</td><td>连接中/倒计时</td><td>更新会话状态</td></tr>
+            <tr><td>provisioned</td><td>WiFi/MQTT 成功</td><td>配网成功</td><td>等待绑定</td></tr>
+            <tr><td>bound</td><td>绑定成功</td><td>出现在首页</td><td>写 device_binding</td></tr>
+            <tr><td>online / offline</td><td>presence/心跳</td><td>在线/离线标识</td><td>更新 state，WS 推送</td></tr>
+            <tr><td>unbound</td><td>解绑/迁移</td><td>从家庭消失</td><td>关闭绑定，停止推送</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="adapter">4. 适配器接口</h2>
+<pre><span class="k">interface</span> DeviceAdapter {
+  connect(ref: DeviceRef): Promise&lt;<span class="k">void</span>&gt;;
+  disconnect(ref: DeviceRef): Promise&lt;<span class="k">void</span>&gt;;
+  sendCommand(ref: DeviceRef, cmd: DeviceCommand): Promise&lt;CommandAck&gt;;
+  onTelemetry(handler: (msg: TelemetryMessage) =&gt; <span class="k">void</span>): <span class="k">void</span>;
+  onPresence(handler: (msg: PresenceMessage) =&gt; <span class="k">void</span>): <span class="k">void</span>;
+}
+</pre>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>实现</th><th>用途</th><th>传输</th><th>状态</th></tr></thead>
+          <tbody>
+            <tr><td>MockAdapter</td><td>单元测试/最小演示</td><td>内存</td><td>M1</td></tr>
+            <tr><td>VirtualBleAdapter</td><td>单机全虚拟链路</td><td>WebSocket</td><td>M2</td></tr>
+            <tr><td>MqttAdapter</td><td>模拟引擎/真实设备</td><td>MQTT</td><td>M2</td></tr>
+            <tr><td>RealBleAdapter</td><td>手机直连开发板</td><td>uni BLE API</td><td>T1</td></tr>
+            <tr><td>HttpAdapter</td><td>厂商云预留</td><td>HTTP</td><td>未来</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="virtualble">5. 虚拟 BLE（T0 基座）</h2>
+      <p>用 WebSocket 模拟 GATT 语义，使小程序端可以在“真实 BLE”和“虚拟 BLE”之间切换，业务代码不变。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>消息</th><th>方向</th><th>字段</th></tr></thead>
+          <tbody>
+            <tr><td>scan.start</td><td>client → server</td><td><code class="inline">{ serviceUUID }</code></td></tr>
+            <tr><td>scan.result</td><td>server → client</td><td><code class="inline">{ devices:[{deviceId,name,rssi,serviceUUID}] }</code></td></tr>
+            <tr><td>connect</td><td>client → server</td><td><code class="inline">{ deviceId }</code></td></tr>
+            <tr><td>connected</td><td>server → client</td><td><code class="inline">{ deviceId }</code></td></tr>
+            <tr><td>discover</td><td>client → server</td><td><code class="inline">{}</code></td></tr>
+            <tr><td>services</td><td>server → client</td><td><code class="inline">{ services:[{uuid,characteristics}] }</code></td></tr>
+            <tr><td>read / value</td><td>双向</td><td><code class="inline">{ serviceId, characteristicId, value? }</code></td></tr>
+            <tr><td>write</td><td>client → server</td><td><code class="inline">{ serviceId, characteristicId, value }</code></td></tr>
+            <tr><td>notify</td><td>server → client</td><td><code class="inline">{ characteristicId, value }</code></td></tr>
+            <tr><td>disconnect</td><td>双向</td><td><code class="inline">{ deviceId, reason }</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small">虚拟设备包含：空调、窗帘、电视、净化器 + 1 个未知能力设备（验证降级）。</p>
+
+      <h2 id="mqtt">6. MQTT 主题与载荷</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>主题</th><th>方向</th><th>QoS</th><th>载荷</th></tr></thead>
+          <tbody>
+            <tr><td>device/{id}/telemetry</td><td>设备 → 服务端</td><td>0/1</td><td><code class="inline">{ v, deviceId, ts, metrics }</code></td></tr>
+            <tr><td>device/{id}/state</td><td>设备 → 服务端</td><td>1 retained</td><td>最新完整状态</td></tr>
+            <tr><td>device/{id}/command</td><td>服务端 → 设备</td><td>1</td><td><code class="inline">{ v, cmdId, capability, name, params, ts }</code></td></tr>
+            <tr><td>device/{id}/ack</td><td>设备 → 服务端</td><td>1</td><td><code class="inline">{ v, cmdId, status, error?, ts }</code></td></tr>
+            <tr><td>device/{id}/presence</td><td>设备 ↔ 服务端</td><td>1 retained + 遗嘱</td><td><code class="inline">{ online, ts }</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn">
+        <strong>不要 retained 命令：</strong>命令只走 QoS 1、非 retained；state/presence 才 retained，避免新订阅者重放旧命令。
+      </div>
+
+      <h2 id="simulator">7. 模拟引擎</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>信号生成</h3>
+          <ul class="small">
+            <li>温度：25–27℃ 正弦/随机游走</li>
+            <li>湿度：45–65%</li>
+            <li>PM2.5：20–80，可注入峰值</li>
+            <li>进度：清洁/洗衣每 2s +1%</li>
+            <li>在线：随机断连/恢复（可配置）</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>故障注入</h3>
+          <ul class="small">
+            <li>延迟、丢包、重复消息</li>
+            <li>错误 JSON、超大 payload</li>
+            <li>命令超时、ack 失败</li>
+            <li>设备离线/重启</li>
+            <li>MQTT broker 断开</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 id="command">8. 命令总线</h2>
+      <ol class="steps">
+        <li><b>校验</b>：登录、家庭归属、设备归属、能力/参数合法。</li>
+        <li><b>幂等</b>：<code class="inline">cmdId</code> 唯一；重复请求返回原结果。</li>
+        <li><b>落库</b>：status=pending；记录发起人/来源。</li>
+        <li><b>下发</b>：MQTT 或 BLE；记录 transport。</li>
+        <li><b>等待 ack</b>：超时（默认 5s）重试 1–2 次；仍失败标记 timeout。</li>
+        <li><b>更新</b>：state/command 状态；WS 推送；写审计。</li>
+      </ol>
+
+      <h2 id="provision">9. 配网状态机</h2>
+      <pre>idle → session_created → scanning → connecting → connected
+     → provisioning → provisioned → binding → bound
+     ↘ failed / expired / cancelled</pre>
+      <ul class="small">
+        <li>会话 token 一次性、5 分钟过期、hash 存储。</li>
+        <li>绑定必须带 session + serial + 当前用户/家庭。</li>
+        <li>失败给明确原因：超时、token 错误、设备已被绑定、WiFi 失败。</li>
+        <li>重复绑定要提示“设备已属于其他家庭”，并提供管理员解绑流程。</li>
+      </ul>
+
+      <h2 id="extend">10. 新增设备类型/能力的步骤</h2>
+      <ol class="steps">
+        <li>管理后台新增 <code class="inline">device_model</code>，填写 capabilities/commands。</li>
+        <li>选择已有控件；如需新控件，在小程序注册 <code class="inline">control → component</code>。</li>
+        <li>设备引擎/真实设备实现对应命令与遥测。</li>
+        <li>用“未知能力设备”验证降级，用新设备验证控制。</li>
+        <li>补契约测试与 E2E；不需要改首页/设备详情结构。</li>
+      </ol>
+
+      <h2 id="acceptance">11. 验收</h2>
+      <ul class="checklist">
+        <li>新增一个设备型号，小程序无需改代码即可显示/控制</li>
+        <li>未知 capability 渲染通用控件，不白屏</li>
+        <li>虚拟 BLE 完成扫描/连接/配网/绑定</li>
+        <li>MQTT telemetry 落库并 WS 推送</li>
+        <li>命令重复 cmdId 不重复执行</li>
+        <li>超时/离线/错误 token 有明确 UI 反馈</li>
+        <li>解绑后停止推送，后台可查审计</li>
+      </ul>
+
+      <div class="page-nav">
+        <a class="prev" href="03-账号权限与家庭体系.html">← 上一份<b>03 · 账号权限与家庭体系</b></a>
+        <a class="next" href="05-小程序用户端.html">下一份<b>05 · 小程序用户端 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>04 · 设备引擎与信号适配</b></span>
+      <span>能力模型、适配器、虚拟 BLE、MQTT、配网</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

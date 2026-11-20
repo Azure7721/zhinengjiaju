@@ -1,0 +1,49 @@
+{
+    "name":  "smart-home",
+    "version":  "0.1.0",
+    "private":  true,
+    "description":  "全屋智能小程序系统 monorepo",
+    "engines":  {
+                    "node":  "\u003e=20"
+                },
+    "packageManager":  "pnpm@10.31.0",
+    "scripts":  {
+                    "dev":  "pnpm -r --parallel --filter \"./apps/**\" --filter \"./infra/**\" dev",
+                    "dev:server":  "pnpm --filter @smart-home/server dev",
+                    "dev:admin":  "pnpm --filter @smart-home/admin dev",
+                    "dev:engine":  "pnpm --filter @smart-home/device-engine dev",
+                    "dev:mqtt":  "pnpm --filter @smart-home/infra dev:mqtt",
+                    "dev:lite":  "pnpm --filter @smart-home/infra dev:lite",
+                    "dev:mp-weixin":  "pnpm --filter @smart-home/miniapp dev:mp-weixin",
+                    "build":  "pnpm -r --filter \"./packages/**\" build \u0026\u0026 pnpm -r --filter \"./apps/**\" build",
+                    "lint":  "eslint .",
+                    "lint:fix":  "eslint . --fix",
+                    "format":  "prettier --write .",
+                    "typecheck":  "pnpm -r --filter \"./packages/**\" --filter \"./apps/**\" typecheck",
+                    "test":  "pnpm -r --filter \"./packages/**\" --filter \"./apps/**\" test",
+                    "db:migrate":  "pnpm --filter @smart-home/server db:migrate",
+                    "db:seed":  "pnpm --filter @smart-home/server db:seed",
+                    "db:reset":  "pnpm --filter @smart-home/server db:reset",
+                    "check-env":  "node --experimental-strip-types scripts/check-env.ts",
+                    "ci":  "pnpm lint \u0026\u0026 pnpm typecheck \u0026\u0026 pnpm test \u0026\u0026 pnpm build",
+                    "test:t0":  "node --experimental-strip-types scripts/t0-e2e.ts"
+                },
+    "devDependencies":  {
+                            "@eslint/js":  "^9.17.0",
+                            "eslint":  "^9.17.0",
+                            "globals":  "^15.14.0",
+                            "prettier":  "^3.4.2",
+                            "typescript":  "^5.7.2",
+                            "typescript-eslint":  "^8.19.0",
+                            "vitest":  "^2.1.8"
+                        },
+    "pnpm":  {
+                 "onlyBuiltDependencies":  [
+                                               "esbuild",
+                                               "prisma",
+                                               "@prisma/client",
+                                               "@prisma/engines",
+                                               "@nestjs/core"
+                                           ]
+             }
+}

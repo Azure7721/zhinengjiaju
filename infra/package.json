@@ -1,0 +1,23 @@
+{
+  "name": "@smart-home/infra",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx src/mqtt-broker.ts",
+    "dev:mqtt": "tsx src/mqtt-broker.ts",
+    "dev:lite": "tsx src/mqtt-broker.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "aedes": "^0.51.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

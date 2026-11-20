@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P1 · 账号与数据</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">Phase 1 · Identity</p>
+        <h1>P1 · 账号、家庭与数据</h1>
+        <p class="lead">
+          目标：小程序用户能登录、创建/加入家庭；管理员能登录后台；权限与数据归属在服务端闭环。
+          这是后续设备绑定与场景执行的前提。
+        </p>
+        <div class="meta">
+          <span class="chip">4–6 天</span>
+          <span class="chip">微信 mock/真实登录</span>
+          <span class="chip">JWT + Refresh</span>
+          <span class="chip">家庭角色</span>
+          <span class="chip">RBAC</span>
+        </div>
+      </div>
+
+      <h2 id="goal">1. 阶段目标</h2>
+      <ul class="checklist">
+        <li>微信 code2session + mock 登录可用</li>
+        <li>管理员账号/密码登录，JWT/refresh，RBAC</li>
+        <li>家庭创建、邀请、成员/角色、住宅/房间</li>
+        <li>设备绑定表与基础 API 就绪</li>
+        <li>越权访问被拒绝并审计</li>
+        <li>OpenAPI 与集成测试覆盖核心接口</li>
+      </ul>
+
+      <h2 id="pre">2. 前置条件</h2>
+      <p><a href="phase-0-基础设施.html">P0</a> 验收通过：数据库、迁移、server 空壳、CI 可用。</p>
+
+      <h2 id="wbs">3. WBS</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>任务</th><th>产出</th></tr></thead>
+          <tbody>
+            <tr><td class="num">D1</td><td>Prisma schema：user/wechat_account/family/family_member/home/room/device_binding/admin/role/permission/audit</td><td>迁移 + seed</td></tr>
+            <tr><td class="num">D2</td><td>Auth 模块：wechat login、mock login、admin login、refresh、logout</td><td>token 可用</td></tr>
+            <tr><td class="num">D3</td><td>Family/Home/Room 模块：CRUD、邀请、成员角色</td><td>家庭闭环</td></tr>
+            <tr><td class="num">D4</td><td>RBAC：角色/权限/Guard；后台菜单权限接口</td><td>越权 403</td></tr>
+            <tr><td class="num">D5</td><td>审计：写操作记录；设备绑定基础 API</td><td>audit_log</td></tr>
+            <tr><td class="num">D6</td><td>OpenAPI、集成测试、seed 账号、README</td><td>可验收</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="auth">4. 登录实现要点</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>小程序</h3>
+          <ul class="small">
+            <li><code class="inline">uni.login</code> 获取 code。</li>
+            <li>服务端 code2session；mock 模式跳过微信。</li>
+            <li>按 openid 建/找 user；签发 access/refresh。</li>
+            <li>返回 family 列表与当前角色。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>管理员</h3>
+          <ul class="small">
+            <li>Argon2id/bcrypt 哈希；失败限流/锁定。</li>
+            <li>JWT 含 adminId、角色、权限版本。</li>
+            <li>refresh 轮换/撤销；改密使旧 token 失效。</li>
+            <li>登录/失败写审计。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout warn">
+        <strong>Mock 登录：</strong>只在 <code class="inline">WECHAT_MOCK=true</code> 且非生产启用；上线前必须关闭并清理测试账号。
+      </div>
+
+      <h2 id="family">5. 家庭与权限</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>能力</th><th>owner</th><th>admin</th><th>member</th></tr></thead>
+          <tbody>
+            <tr><td>查看/控制</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>添加/移除设备</td><td>✓</td><td>✓</td><td>—</td></tr>
+            <tr><td>邀请成员</td><td>✓</td><td>✓</td><td>—</td></tr>
+            <tr><td>移除成员/转让</td><td>✓</td><td>—</td><td>—</td></tr>
+            <tr><td>删除家庭</td><td>✓</td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="data">6. 数据与接口</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>接口</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>POST /auth/wechat/login</td><td>code2session</td></tr>
+            <tr><td>POST /auth/wechat/mock</td><td>开发登录</td></tr>
+            <tr><td>POST /auth/admin/login</td><td>管理员</td></tr>
+            <tr><td>POST /auth/refresh</td><td>刷新</td></tr>
+            <tr><td>GET/POST /families</td><td>家庭列表/创建</td></tr>
+            <tr><td>POST /families/:id/invites</td><td>邀请码</td></tr>
+            <tr><td>POST /families/join</td><td>加入</td></tr>
+            <tr><td>GET/POST /homes /rooms</td><td>住宅/房间</td></tr>
+            <tr><td>GET /me</td><td>当前用户/家庭/角色</td></tr>
+            <tr><td>GET /admin/me/permissions</td><td>后台菜单/按钮权限</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="acceptance">7. 验收标准</h2>
+      <ul class="checklist">
+        <li>mock 登录成功，返回 token 与 family</li>
+        <li>管理员登录，四角色菜单不同</li>
+        <li>owner 创建家庭/邀请；member 加入</li>
+        <li>member 添加设备返回 403</li>
+        <li>非成员读取家庭/设备返回 403/404</li>
+        <li>refresh 轮换，旧 refresh 失效</li>
+        <li>写操作有 audit_log</li>
+      </ul>
+
+      <h2 id="risks">8. 风险</h2>
+      <ul class="small">
+        <li>没有 AppID → 先用 mock，真实流程用测试号验证。</li>
+        <li>家庭角色边界不清 → 以权限矩阵为准，前端只做展示。</li>
+        <li>Token 过期体验 → 自动 refresh + 失败跳登录。</li>
+        <li>测试数据污染 → seed 与重置脚本。</li>
+      </ul>
+
+      <h2 id="next">9. 下一阶段入口</h2>
+      <p>P1 验收通过后进入 <a href="phase-2-设备与场景.html">P2 · 设备与场景</a>。</p>
+
+      <div class="page-nav">
+        <a class="prev" href="phase-0-基础设施.html">← 上一份<b>P0 · 基础设施</b></a>
+        <a class="next" href="phase-2-设备与场景.html">下一份<b>P2 · 设备与场景 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>P1 · 账号、家庭与数据</b></span>
+      <span>登录、Token、家庭、RBAC、绑定基础</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

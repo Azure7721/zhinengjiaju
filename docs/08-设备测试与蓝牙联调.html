@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08 · 设备测试与蓝牙联调</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">08 · Device Test &amp; BLE</p>
+        <h1>设备测试与蓝牙联调</h1>
+        <p class="lead">
+          两条路径：<b>T0 单机全虚拟</b>，一台电脑跑通完整信号链路；<b>T1 ESP32 BLE</b>，
+          开发板发真实蓝牙广播，手机小程序扫描/连接/配网。T0 是演示基线，T1 是硬件验证。
+        </p>
+        <div class="meta">
+          <span class="chip">T0 必做</span>
+          <span class="chip amber">T1 建议</span>
+          <span class="chip">虚拟 BLE WebSocket</span>
+          <span class="chip">ESP32 + NimBLE</span>
+          <span class="chip">Python bleak</span>
+        </div>
+      </div>
+
+      <h2 id="strategy">1. 测试策略</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>路径</th><th>用途</th><th>依赖</th><th>优先级</th></tr></thead>
+          <tbody>
+            <tr><td><b>T0 单机全虚拟</b></td><td>同一台 PC 跑 server、admin、MQTT、设备引擎、小程序开发者工具；虚拟 BLE 走 WebSocket</td><td>无硬件</td><td><span class="badge b-red">必做</span></td></tr>
+            <tr><td><b>T1 开发板 BLE</b></td><td>ESP32 作为 BLE 外设；手机小程序扫描/连接；配网后 WiFi + MQTT</td><td>ESP32 + 手机 + 蓝牙</td><td><span class="badge b-amber">建议</span></td></tr>
+            <tr><td><b>T2 混合</b></td><td>PC 服务端 + ESP32 + 手机 + 管理后台</td><td>T0 + T1</td><td><span class="badge b-gray">可选</span></td></tr>
+            <tr><td><b>T3 异常/稳定性</b></td><td>断连、超时、错误 token、重复广播、MQTT 断线、重启</td><td>T0/T1</td><td><span class="badge b-red">必做</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="t0">2. T0 单机全虚拟</h2>
+      <h3>2.1 服务与端口</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>服务</th><th>端口</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>NestJS API / WebSocket</td><td>3000</td><td><code class="inline">http://127.0.0.1:3000</code>，WS <code class="inline">/ws</code></td></tr>
+            <tr><td>管理后台 Vite</td><td>5173</td><td><code class="inline">http://127.0.0.1:5173</code></td></tr>
+            <tr><td>MQTT Broker（Aedes）</td><td>1883 / 8888</td><td>TCP / WebSocket</td></tr>
+            <tr><td>虚拟 BLE WebSocket</td><td>7001</td><td><code class="inline">ws://127.0.0.1:7001/virtual-ble</code></td></tr>
+            <tr><td>PostgreSQL</td><td>5432</td><td>或 SQLite 兜底</td></tr>
+            <tr><td>Redis</td><td>6379</td><td>可先内存替代</td></tr>
+            <tr><td>小程序开发者工具</td><td>—</td><td>API 基址 <code class="inline">http://127.0.0.1:3000</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>2.2 启动顺序</h3>
+      <ol class="steps">
+        <li><b>数据库/Redis</b>：Docker Compose 或本机服务；跑迁移与 seed。</li>
+        <li><b>MQTT</b>：Aedes 以 ws/tcp 双协议启动。</li>
+        <li><b>server</b>：订阅 MQTT，启动 REST/WS，健康检查 <code class="inline">/health</code>。</li>
+        <li><b>device-engine</b>：注册 4+1 个虚拟设备，开始 telemetry。</li>
+        <li><b>admin</b>：Vite 启动。</li>
+        <li><b>miniapp</b>：<code class="inline">pnpm dev:mp-weixin</code>，微信开发者工具打开 <code class="inline">dist/dev/mp-weixin</code>。</li>
+        <li><b>开发者工具设置</b>：勾选“不校验合法域名、web-view、TLS 版本以及 HTTPS 证书”。</li>
+      </ol>
+      <p class="small muted">所有服务可用 <code class="inline">pnpm dev</code>（concurrently）+ <code class="inline">scripts/check-env.ts</code> 做端口/健康检查。</p>
+
+      <h3>2.3 虚拟 BLE 协议</h3>
+      <p>用 WebSocket 模拟 GATT 语义；小程序端 <code class="inline">platform/ble</code> 通过环境变量切换真实/虚拟实现，业务代码不变。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>消息</th><th>方向</th><th>载荷</th></tr></thead>
+          <tbody>
+            <tr><td>scan.start</td><td>client → server</td><td><code class="inline">{ type, serviceUUID }</code></td></tr>
+            <tr><td>scan.result</td><td>server → client</td><td><code class="inline">{ devices:[{ deviceId, name, rssi, serviceUUID }] }</code></td></tr>
+            <tr><td>connect</td><td>client → server</td><td><code class="inline">{ deviceId }</code></td></tr>
+            <tr><td>connected</td><td>server → client</td><td><code class="inline">{ deviceId }</code></td></tr>
+            <tr><td>discover</td><td>client → server</td><td><code class="inline">{}</code></td></tr>
+            <tr><td>services</td><td>server → client</td><td><code class="inline">{ services:[{ uuid, characteristics }] }</code></td></tr>
+            <tr><td>read / value</td><td>双向</td><td><code class="inline">{ serviceId, characteristicId, value? }</code></td></tr>
+            <tr><td>write</td><td>client → server</td><td><code class="inline">{ serviceId, characteristicId, value }</code></td></tr>
+            <tr><td>notify</td><td>server → client</td><td><code class="inline">{ characteristicId, value }</code></td></tr>
+            <tr><td>disconnect</td><td>双向</td><td><code class="inline">{ deviceId, reason }</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>2.4 虚拟设备</h3>
+      <ul class="small">
+        <li>4 个标准设备：空调、窗帘、电视、净化器。</li>
+        <li>1 个“未知能力”设备：capability 不在注册表，验证通用降级控件。</li>
+        <li>设备引擎每 2–5 秒发 telemetry；支持手动注入峰值/断连。</li>
+        <li>管理后台“设备模拟器”页可新增/删除虚拟设备、发信号、断连。</li>
+      </ul>
+
+      <div class="callout">
+        <strong>同一台电脑的通信：</strong>
+        小程序开发者工具访问 <code class="inline">127.0.0.1</code>，server 与 MQTT 也监听本机；
+        虚拟 BLE 走 WebSocket，不经过真实蓝牙栈。这样不需要手机/开发板也能完整演示。
+      </div>
+
+      <h2 id="t1">3. T1 ESP32 BLE</h2>
+      <h3>3.1 硬件</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>物料</th><th>建议</th><th>用途</th></tr></thead>
+          <tbody>
+            <tr><td>开发板</td><td>ESP32-C3 / ESP32-S3</td><td>BLE 5.0 外设</td></tr>
+            <tr><td>USB 线</td><td>数据线</td><td>烧录/供电</td></tr>
+            <tr><td>传感器（可选）</td><td>DHT22、PM2.5</td><td>真实温湿度/空气质量</td></tr>
+            <tr><td>OLED（可选）</td><td>0.96" I2C</td><td>显示配网状态</td></tr>
+            <tr><td>手机</td><td>iOS / Android</td><td>微信真机调试</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small">没有传感器时，固件内置正弦/随机信号，保证演示可用。</p>
+
+      <h3>3.2 固件与 GATT</h3>
+      <p>PlatformIO + Arduino/NimBLE（或 ESP-IDF）。上电广播自定义 Service UUID 与设备名。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>UUID</th><th>属性</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td><code class="inline">FFF0</code></td><td>Service</td><td>主服务</td></tr>
+            <tr><td><code class="inline">FFF1</code></td><td>Read</td><td>DeviceInfo：<code class="inline">{ deviceId, model, firmware, capabilities }</code></td></tr>
+            <tr><td><code class="inline">FFF2</code></td><td>Write</td><td>Provision：<code class="inline">{ ssid, password, token, serverUrl }</code></td></tr>
+            <tr><td><code class="inline">FFF3</code></td><td>Write</td><td>Command：<code class="inline">{ cmdId, capability, command, params }</code></td></tr>
+            <tr><td><code class="inline">FFF4</code></td><td>Notify</td><td>Telemetry：<code class="inline">{ deviceId, ts, state }</code></td></tr>
+            <tr><td><code class="inline">FFF5</code></td><td>Notify</td><td>Ack：<code class="inline">{ cmdId, status, error? }</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>3.3 配网流程</h3>
+      <div class="flow">
+        <span class="step">广播</span><span class="sep">→</span>
+        <span class="step">手机扫描</span><span class="sep">→</span>
+        <span class="step">连接</span><span class="sep">→</span>
+        <span class="step">读设备信息</span><span class="sep">→</span>
+        <span class="step">写 WiFi/token</span><span class="sep">→</span>
+        <span class="step">板子入网</span><span class="sep">→</span>
+        <span class="step">MQTT 上线</span><span class="sep">→</span>
+        <span class="step">遥测/命令</span>
+      </div>
+      <p class="small">板子加入同一局域网后连接 PC 的 <code class="inline">mqtt://&lt;PC-IP&gt;:1883</code>；服务端地址不能用 <code class="inline">127.0.0.1</code>。</p>
+
+      <h3>3.4 小程序 BLE 调用序列</h3>
+<pre>uni.openBluetoothAdapter({ success: startScan });
+
+uni.startBluetoothDevicesDiscovery({
+  services: [SERVICE_UUID],
+  allowDuplicatesKey: false,
+});
+
+uni.onBluetoothDeviceFound((res) =&gt; {
+  res.devices.forEach((d) =&gt; {
+    if (d.advertisServiceUUIDs?.includes(SERVICE_UUID)) addCandidate(d);
+  });
+});
+
+uni.createBLEConnection({ deviceId, timeout: 10000 });
+uni.getBLEDeviceServices({ deviceId });
+uni.getBLEDeviceCharacteristics({ deviceId, serviceId });
+
+uni.notifyBLECharacteristicValueChange({
+  state: true, deviceId, serviceId,
+  characteristicId: TELEMETRY_UUID,
+});
+uni.onBLECharacteristicValueChange((res) =&gt; decode(res.value));
+
+uni.writeBLECharacteristicValue({
+  deviceId, serviceId,
+  characteristicId: PROVISION_UUID,
+  value: encode(payload),
+});
+</pre>
+      <ul class="small">
+        <li>小程序只支持 BLE，不支持经典蓝牙。</li>
+        <li>Android 6+ 扫描需定位权限且定位开启；Android 12+ 需 BLUETOOTH_SCAN/CONNECT；iOS 需蓝牙权限。</li>
+        <li><code class="inline">deviceId</code> 在 iOS/Android 不稳定，不能作为业务主键；业务主键用设备上报的 serial。</li>
+        <li>默认 MTU 23（有效载荷 20 字节），JSON 需分片；Android 可 <code class="inline">uni.setBLEMTU</code> 协商。</li>
+        <li>开发者工具对 BLE 支持有限，T1 必须真机。</li>
+      </ul>
+
+      <h2 id="bleak">4. PC 侧 BLE 测试（bleak）</h2>
+      <p>在手机之前，先用 PC 验证固件，减少来回烧录：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>步骤</th><th>操作</th><th>期望</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>安装 <code class="inline">pip install bleak</code></td><td>WinRT 可用</td></tr>
+            <tr><td>2</td><td>扫描 <code class="inline">BleakScanner.discover()</code></td><td>看到设备名/Service UUID</td></tr>
+            <tr><td>3</td><td>连接 <code class="inline">BleakClient(address)</code></td><td>connected</td></tr>
+            <tr><td>4</td><td>读 FFF1</td><td>返回设备信息 JSON</td></tr>
+            <tr><td>5</td><td>写 FFF2</td><td>板子开始配网/连 MQTT</td></tr>
+            <tr><td>6</td><td>订阅 FFF4/FFF5</td><td>收到 telemetry/ack</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">如果 PC 蓝牙不可用，直接跳到手机真机测试；Node 侧 noble 在 Windows 需要 WinUSB/Zadig，作为备选。</p>
+
+      <h2 id="matrix">5. 测试矩阵</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>场景</th><th>前置</th><th>步骤</th><th>期望</th></tr></thead>
+          <tbody>
+            <tr><td>T0.1</td><td>一键启动全链路</td><td>依赖安装</td><td>启动 server/admin/engine/MQTT</td><td>健康检查全绿，端口无冲突</td></tr>
+            <tr><td>T0.2</td><td>虚拟扫描/连接</td><td>虚拟设备已注册</td><td>小程序扫描 → 连接</td><td>5s 出现，10s 连接</td></tr>
+            <tr><td>T0.3</td><td>配网与绑定</td><td>已连接</td><td>写配网 → 绑定</td><td>device/device_binding 落库，归属正确</td></tr>
+            <tr><td>T0.4</td><td>遥测推送</td><td>绑定完成</td><td>引擎发 telemetry</td><td>2s 内 UI 更新，DB 有记录</td></tr>
+            <tr><td>T0.5</td><td>命令/回执</td><td>设备在线</td><td>调温/开关</td><td>1s 内 ack，幂等</td></tr>
+            <tr><td>T0.6</td><td>场景执行</td><td>场景已配置</td><td>执行场景</td><td>逐动作状态，run 日志</td></tr>
+            <tr><td>T0.7</td><td>异常反馈</td><td>引擎断连</td><td>执行命令</td><td>失败提示 + 重试</td></tr>
+            <tr><td>T0.8</td><td>重启恢复</td><td>有历史数据</td><td>重启 server/engine</td><td>状态恢复，离线标记正确</td></tr>
+            <tr><td>T1.1</td><td>板子广播</td><td>固件烧录</td><td>手机扫描</td><td>发现设备名/UUID</td></tr>
+            <tr><td>T1.2</td><td>连接/读取</td><td>已扫描</td><td>连接 → 读 FFF1</td><td>返回型号/固件/能力</td></tr>
+            <tr><td>T1.3</td><td>BLE 配网</td><td>已连接</td><td>写 FFF2</td><td>入网，MQTT 上线</td></tr>
+            <tr><td>T1.4</td><td>BLE 遥测/命令</td><td>已配网</td><td>订阅 FFF4/FFF5，写 FFF3</td><td>通知/ack 正确</td></tr>
+            <tr><td>T1.5</td><td>断连/重连/超距</td><td>已连接</td><td>关板/走远/重开</td><td>状态正确，可重连</td></tr>
+            <tr><td>T1.6</td><td>错误 token</td><td>已连接</td><td>写错误 token</td><td>拒绝配网，明确错误</td></tr>
+            <tr><td>T2.1</td><td>混合链路</td><td>T0+T1</td><td>板子+手机+PC 后台</td><td>端到端一致</td></tr>
+            <tr><td>T3.1</td><td>重复广播/多设备</td><td>多虚拟设备</td><td>扫描</td><td>去重，选择正确</td></tr>
+            <tr><td>T3.2</td><td>大包/分片</td><td>长 JSON</td><td>写入</td><td>分片重组正确</td></tr>
+            <tr><td>T3.3</td><td>MQTT 断线</td><td>运行中</td><td>停 broker</td><td>重连/降级，UI 提示</td></tr>
+            <tr><td>T3.4</td><td>24h 稳定性</td><td>全链路</td><td>持续遥测</td><td>无泄漏/断连堆积</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="acceptance">6. 验收门槛</h2>
+      <ul class="checklist">
+        <li>T0 全部通过后才进入 T1；T0 是演示必须项</li>
+        <li>T1 至少通过 1.1–1.4</li>
+        <li>设备添加后数据库可查，user/family/home 正确</li>
+        <li>命令幂等，重复 cmdId 不重复执行</li>
+        <li>断连/超时/错误 token 有可见反馈</li>
+        <li>扫描 &lt;5s、连接 &lt;10s、遥测 &lt;2s、ack &lt;1s（本地）</li>
+        <li>解绑后停止推送，后台可审计</li>
+      </ul>
+
+      <h2 id="failure">7. 故障注入</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>虚拟设备</h3>
+          <ul class="small">
+            <li>断连、延迟、丢包</li>
+            <li>错误 JSON、超大 payload</li>
+            <li>重复 cmdId、错误 token</li>
+            <li>设备离线/重启</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>基础设施</h3>
+          <ul class="small">
+            <li>MQTT broker 停止、QoS 0/1 对比</li>
+            <li>server 重启、DB/Redis 不可用</li>
+            <li>端口冲突、防火墙拦截</li>
+            <li>手机权限拒绝/蓝牙关闭</li>
+          </ul>
+        </div>
+      </div>
+      <p class="small">UI 必须覆盖：扫描中、连接中、配网中、成功、失败、重试、离线、无权限。</p>
+
+      <h2 id="limits">8. 限制与风险</h2>
+      <ul class="small">
+        <li>微信开发者工具不能完整模拟 BLE，T1 必须真机。</li>
+        <li>手机不能访问 PC 的 <code class="inline">127.0.0.1</code>，T1 用同一局域网 IP 或内网穿透。</li>
+        <li>Windows BLE 依赖蓝牙适配器/驱动；bleak 也可能受系统限制。</li>
+        <li>没有 ESP32 时，T0 仍可完成全部演示，T1 作为加分项。</li>
+        <li>设备绑定与信号链路必须以后端/数据库为准，不能只在前端“假装”。</li>
+        <li>真实环境需 HTTPS/域名白名单；本地开发用开发者工具免校验。</li>
+      </ul>
+
+      <h2 id="debug">9. 调试清单</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>现象</th><th>排查</th></tr></thead>
+          <tbody>
+            <tr><td>扫描不到设备</td><td>蓝牙开启、定位权限、Service UUID、板子广播、距离</td></tr>
+            <tr><td>连接失败</td><td>设备已被连、超时、iOS/Android deviceId 差异、重启蓝牙</td></tr>
+            <tr><td>写数据失败</td><td>特征值权限、MTU/分片、JSON 编码、未订阅 notify</td></tr>
+            <tr><td>配网后不上线</td><td>WiFi 2.4G、PC IP、MQTT 端口、防火墙、token</td></tr>
+            <tr><td>手机连不上后端</td><td>localhost 不可用、LAN IP、HTTPS/域名白名单、开发者工具设置</td></tr>
+            <tr><td>命令无回执</td><td>cmdId 重复、设备离线、MQTT QoS、ack 特征值</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="data">10. 测试数据与重置</h2>
+      <ul class="small">
+        <li>种子：2 个用户、2 个家庭、4 类设备 + 1 未知能力设备。</li>
+        <li>账号：userA/userB、admin 四角色；密码只用于本地。</li>
+        <li>重置脚本：清空遥测/命令/场景执行，保留型号与设备。</li>
+        <li>测试后清理虚拟设备、解绑测试设备，避免污染演示数据。</li>
+      </ul>
+
+      <div class="page-nav">
+        <a class="prev" href="07-场景自动化与实时联动.html">← 上一份<b>07 · 场景自动化与实时联动</b></a>
+        <a class="next" href="09-测试部署与演示.html">下一份<b>09 · 测试部署与演示 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>08 · 设备测试与蓝牙联调</b></span>
+      <span>T0 单机虚拟 · T1 ESP32 BLE · 测试矩阵</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

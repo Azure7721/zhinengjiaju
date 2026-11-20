@@ -1,0 +1,163 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "智慧家",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#F2F7F8"
+      }
+    },
+    {
+      "path": "pages/scene/index",
+      "style": {
+        "navigationBarTitleText": "场景",
+        "backgroundColor": "#F2F7F8"
+      }
+    },
+    {
+      "path": "pages/discover/index",
+      "style": {
+        "navigationBarTitleText": "发现"
+      }
+    },
+    {
+      "path": "pages/mall/index",
+      "style": {
+        "navigationBarTitleText": "商城"
+      }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "backgroundColor": "#F2F7F8"
+      }
+    },
+    {
+      "path": "pages/device/detail",
+      "style": {
+        "navigationBarTitleText": "设备",
+        "backgroundColor": "#F2F7F8"
+      }
+    },
+    {
+      "path": "pages/all-home/index",
+      "style": {
+        "navigationBarTitleText": "全屋控制",
+        "backgroundColor": "#F2F7F8"
+      }
+    },
+    {
+      "path": "pages/notification/index",
+      "style": {
+        "navigationBarTitleText": "消息",
+        "backgroundColor": "#F2F7F8"
+      }
+    },
+    {
+      "path": "pages/settings/index",
+      "style": {
+        "navigationBarTitleText": "设置",
+        "backgroundColor": "#F2F7F8"
+      }
+    },
+    {
+      "path": "pages/family/index",
+      "style": {
+        "navigationBarTitleText": "家庭管理",
+        "backgroundColor": "#F2F7F8"
+      }
+    },
+    {
+      "path": "pages/wifi/index",
+      "style": {
+        "navigationBarTitleText": "WiFi / 网络",
+        "backgroundColor": "#F2F7F8"
+      }
+    }
+  ],
+  "subPackages": [
+    {
+      "root": "pkgAdd",
+      "pages": [
+        {
+          "path": "index/index",
+          "style": {
+            "navigationBarTitleText": "添加设备",
+            "backgroundColor": "#F2F7F8"
+          }
+        },
+        {
+          "path": "connect/index",
+          "style": {
+            "navigationBarTitleText": "连接设备",
+            "backgroundColor": "#F2F7F8"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pkgEnergy",
+      "pages": [
+        {
+          "path": "index/index",
+          "style": {
+            "navigationBarTitleText": "电量统计",
+            "backgroundColor": "#F2F7F8"
+          }
+        }
+      ]
+    }
+  ],
+  "tabBar": {
+    "color": "#8A9496",
+    "selectedColor": "#12BFC1",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/scene/index",
+        "text": "场景"
+      },
+      {
+        "pagePath": "pages/discover/index",
+        "text": "发现"
+      },
+      {
+        "pagePath": "pages/mall/index",
+        "text": "商城"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "智慧家",
+    "navigationBarBackgroundColor": "#F2F7F8",
+    "backgroundColor": "#F2F7F8",
+    "backgroundColorTop": "#F2F7F8",
+    "backgroundColorBottom": "#F2F7F8"
+  },
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^empty$": "@/components/common/Empty.vue",
+      "^sheet$": "@/components/common/Sheet.vue"
+    }
+  }
+}

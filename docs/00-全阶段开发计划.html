@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00 · 全阶段开发计划</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">00 · Master Plan</p>
+        <h1>全阶段开发计划</h1>
+        <p class="lead">
+          把产品、架构、设备、账号、前后台和测试拆成 6 个可验收阶段。每个阶段都有明确的目标、
+          交付物、验收标准和下一阶段入口。本文档是总纲，细节落在 01–09 与 P0–P5。
+        </p>
+        <div class="meta">
+          <span class="chip">6 个阶段</span>
+          <span class="chip">29–39 人日</span>
+          <span class="chip">T0 必做</span>
+          <span class="chip amber">T1 硬件加分</span>
+        </div>
+      </div>
+
+      <h2 id="goal">1. 项目目标</h2>
+      <p>做一套<strong>可扩展</strong>的全屋智能小程序系统，而不是把设计稿上的几个按钮做出来：</p>
+      <ul>
+        <li><b>用户端</b>：微信小程序，完成登录、家庭、设备控制、场景、配网、能耗、消息、我的。</li>
+        <li><b>管理端</b>：PC Web 后台，管理用户/家庭、设备型号/能力、设备库存、场景模板、日志与审计。</li>
+        <li><b>服务端</b>：账号、家庭、设备、场景、遥测、命令、权限、审计的 API 与实时推送。</li>
+        <li><b>设备引擎</b>：模拟设备信号；支持单机全虚拟与 ESP32 BLE 两种测试路径。</li>
+        <li><b>扩展能力</b>：新增设备类型/能力/场景动作尽量通过配置与注册完成，不改页面结构。</li>
+      </ul>
+
+      <h2 id="scope">2. 范围与非目标</h2>
+      <div class="grid-2">
+        <div class="card teal">
+          <h3>本阶段要做</h3>
+          <ul class="small">
+            <li>微信小程序用户端 + PC 管理后台</li>
+            <li>微信登录（含 mock 模式）与管理员 JWT/RBAC</li>
+            <li>家庭、成员、房间、设备绑定</li>
+            <li>设备型号/能力元数据与动态 UI</li>
+            <li>MQTT/WebSocket 信号链路与模拟引擎</li>
+            <li>场景触发器/动作/执行日志</li>
+            <li>T0 单机全虚拟 + T1 ESP32 BLE 测试</li>
+            <li>部署、演示、验收文档</li>
+          </ul>
+        </div>
+        <div class="card red">
+          <h3>本阶段不做</h3>
+          <ul class="small">
+            <li>真实量产硬件与厂商云对接</li>
+            <li>支付、订单、物流、发票</li>
+            <li>语音助手、地图、复杂 AI 推荐</li>
+            <li>多租户 SaaS 与大规模集群</li>
+            <li>微信审核上线（只到体验版）</li>
+            <li>商城/发现的重业务逻辑</li>
+            <li>真实 BLE 之外的 Zigbee/Matter 网关</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 id="ui-gap">2.1 UI 空缺入口处理规则（设计稿有按钮、无对应页面）</h2>
+      <p>设计稿只画了核心链路，很多入口“有按钮没有页面”。全部按以下两类处理，不允许静默点击无反应，也不允许因此膨胀范围：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>类别</th><th>判定标准</th><th>处理方式</th><th>范围约束</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>A · 必要 / 设置类</b></td>
+              <td>核心链路或账号/家庭/设备管理必需，缺了流程走不通或无法演示闭环</td>
+              <td><b>按现有 UI 风格新设计一个页面</b>：沿用设计令牌（主色 <code class="inline">#12BFC1</code>、卡片、圆角、分组列表），只保留必要功能</td>
+              <td>不做全功能；每个新页面只覆盖验收所需最小操作集</td>
+            </tr>
+            <tr>
+              <td><b>B · 丰富但无 UI 的运营版块</b></td>
+              <td>内容运营类、重业务、设计稿无页面，如商城、发现、健康生活、会员中心</td>
+              <td><b>点击提示“正在开发中”</b>：统一占位组件（Toast 或占位页），入口保留、可点击、有反馈</td>
+              <td>不做内容、不做后端接口；仅占位交互</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="small">
+        <li><b>A 类示例</b>：设置（账号安全/通知/关于/通用）、家庭管理、房间管理、设备编辑（改名/移房间/删除）、WiFi 与网络、退出登录、消息通知详情。</li>
+        <li><b>B 类示例</b>：发现、商城、健康生活、会员卡/权益、耗材商城、第三方平台。</li>
+        <li>分类清单在 <a href="05-小程序用户端.html">05 · 小程序用户端</a> 的“入口盘点”表中逐条给出；开发中若发现新入口，按本规则归类并回填该表。</li>
+        <li>两类都计入 <a href="phase-3-小程序前台.html">P3 验收</a>：A 类可走通、B 类点击必有“正在开发中”反馈。</li>
+      </ul>
+
+      <h2 id="principles">3. 架构原则（必须可验收）</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>原则</th><th>落地方式</th><th>验收信号</th></tr></thead>
+          <tbody>
+            <tr><td><b>元数据驱动</b></td><td>设备型号、能力、命令 schema 存库；小程序/后台按元数据渲染</td><td>后台新增设备型号，小程序无需改代码即可控制</td></tr>
+            <tr><td><b>能力注册表</b></td><td>capability → 控件映射；未知能力有通用降级</td><td>新增 capability 不复制页面</td></tr>
+            <tr><td><b>协议适配器</b></td><td>Mock / VirtualBle / MQTT / RealBle 统一接口</td><td>切换传输不影响业务层</td></tr>
+            <tr><td><b>命令总线</b></td><td>校验、幂等、超时、重试、ack、审计</td><td>重复 cmdId 不重复执行</td></tr>
+            <tr><td><b>场景 DSL</b></td><td>触发器/条件/动作策略注册；执行器状态机</td><td>新增触发器类型只加策略</td></tr>
+            <tr><td><b>动态 UI</b></td><td>小程序控制区、后台表单由 schema 生成</td><td>设计稿 4 类设备只是首批模板</td></tr>
+            <tr><td><b>权限与版本</b></td><td>RBAC、API 版本化、审计日志</td><td>越权请求被拒绝且有审计</td></tr>
+            <tr><td><b>数据绑定</b></td><td>设备添加落库并绑定 user/family/home</td><td>后台可查、可解绑、可迁移</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="stages">4. 阶段总表</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>阶段</th><th>目标</th><th>核心交付</th><th>验收</th><th>工期</th><th>依赖</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>P0 基础设施</b></td>
+              <td>工程可安装、可启动、可测试、可复现</td>
+              <td>monorepo、TS/lint/CI、数据库、Docker/本机服务、共享包</td>
+              <td>一条命令启动；测试通过；环境记录完整</td>
+              <td class="num">2–3 天</td><td>—</td>
+            </tr>
+            <tr>
+              <td><b>P1 账号与数据</b></td>
+              <td>登录、家庭、权限闭环</td>
+              <td>微信登录 mock/真实、管理员 JWT、家庭/成员、RBAC、绑定表</td>
+              <td>用户/管理员可登录；越权被拒；数据落库</td>
+              <td class="num">4–6 天</td><td>P0</td>
+            </tr>
+            <tr>
+              <td><b>P2 设备与场景</b></td>
+              <td>设备可建模、可添加、可绑定、可模拟、可联动</td>
+              <td>设备模型/能力、配网、虚拟 BLE、MQTT/WS、遥测、命令、场景执行器</td>
+              <td>添加设备落库；T0 信号闭环；场景逐项状态</td>
+              <td class="num">7–9 天</td><td>P1</td>
+            </tr>
+            <tr>
+              <td><b>P3 小程序前台</b></td>
+              <td>用户端核心闭环可用</td>
+              <td>登录、首页、全屋、动态设备、添加设备、场景、消息、能耗、我的</td>
+              <td>3 秒找到运行设备；操作 ≤2 步；有反馈</td>
+              <td class="num">6–8 天</td><td>P2</td>
+            </tr>
+            <tr>
+              <td><b>P4 管理后台</b></td>
+              <td>管理员可运营</td>
+              <td>仪表盘、用户/家庭、设备型号/能力、库存、场景、日志、审计、模拟器</td>
+              <td>后台新增型号，小程序动态可见</td>
+              <td class="num">5–7 天</td><td>P2</td>
+            </tr>
+            <tr>
+              <td><b>P5 联调与交付</b></td>
+              <td>端到端可演示、可部署</td>
+              <td>T0/T1 测试、E2E、安全/性能、Docker/HTTPS、体验版、演示脚本</td>
+              <td>全链路通过；体验版可扫码；文档完整</td>
+              <td class="num">5–6 天</td><td>P3/P4</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="milestones">5. 里程碑</h2>
+      <div class="timeline">
+        <div class="tl"><b>M0 · 工程可跑</b><p>P0 完成：环境可复现，数据库/共享包/CI 就绪。</p></div>
+        <div class="tl"><b>M1 · 账号闭环</b><p>P1 完成：小程序与管理员都能登录，家庭/权限可用。</p></div>
+        <div class="tl"><b>M2 · 设备信号闭环</b><p>P2 完成：添加设备落库并绑定，T0 遥测/命令/场景跑通。</p></div>
+        <div class="tl"><b>M3 · 用户端可演示</b><p>P3 完成：核心页面与动态设备控制可用。</p></div>
+        <div class="tl"><b>M4 · 管理端可运营</b><p>P4 完成：设备型号/能力、库存、日志、审计、模拟器可用。</p></div>
+        <div class="tl"><b>M5 · 可交付</b><p>P5 完成：T0/T1 验收、部署、体验版、演示脚本。</p></div>
+      </div>
+
+      <h2 id="crosscutting">6. 跨阶段关注点</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>安全</h3>
+          <p class="small">JWT/refresh、密码哈希、RBAC、输入校验、限流、CORS、审计；设备命令校验归属，防止越权控制他人设备。</p>
+        </div>
+        <div class="card">
+          <h3>数据</h3>
+          <p class="small">PostgreSQL + Prisma；设备状态/遥测/命令/场景执行/审计留痕；JSONB 存能力与参数；索引与保留策略。</p>
+        </div>
+        <div class="card">
+          <h3>可观测</h3>
+          <p class="small">结构化日志、请求 ID、健康检查、关键指标（在线设备、命令成功率、场景失败率）；管理后台可见。</p>
+        </div>
+        <div class="card">
+          <h3>可复现</h3>
+          <p class="small">一键启动、种子数据、环境变量样例、Docker/本机降级、测试账号、重置脚本。</p>
+        </div>
+        <div class="card">
+          <h3>文档</h3>
+          <p class="small">每阶段更新 README、OpenAPI、数据字典、变更记录；计划文档与实现同步，不写“过期文档”。</p>
+        </div>
+        <div class="card">
+          <h3>可扩展</h3>
+          <p class="small">新增设备类型/能力/触发器/动作不复制页面；用元数据、注册表、策略与适配器扩展。</p>
+        </div>
+      </div>
+
+      <h2 id="dod">7. Definition of Done</h2>
+      <ul class="checklist">
+        <li>代码通过 lint、类型检查、单元/集成测试</li>
+        <li>关键流程有 E2E 或可复现的手工验收脚本</li>
+        <li>API 有 OpenAPI 文档，错误码统一</li>
+        <li>数据库迁移可重复执行，种子数据可重置</li>
+        <li>设备添加落库并绑定账号，后台可查</li>
+        <li>T0 单机全链路通过；T1 至少扫描/连接/读取/配网/遥测</li>
+        <li>小程序无控制台报错，关键操作有反馈</li>
+        <li>管理后台权限菜单/按钮生效，写操作有审计</li>
+        <li>README 可让新人从零启动</li>
+        <li>演示脚本 5–10 分钟可一次走通</li>
+      </ul>
+
+      <h2 id="risks">8. 主要风险</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>风险</th><th>影响</th><th>应对</th></tr></thead>
+          <tbody>
+            <tr><td>范围膨胀</td><td>工期失控</td><td>阶段验收以核心闭环为准；商城/发现只做静态</td></tr>
+            <tr><td>架构过度设计</td><td>开发变慢</td><td>先做最小链路，再按阶段补扩展点</td></tr>
+            <tr><td>Docker/WSL 不可用</td><td>环境阻塞</td><td>P0 三级降级：Docker → 本机服务 → SQLite/Aedes</td></tr>
+            <tr><td>没有 ESP32/蓝牙</td><td>T1 无法做</td><td>T0 单机全虚拟是必做基线，T1 加分</td></tr>
+            <tr><td>微信 AppID/域名</td><td>真机/体验版受阻</td><td>mock 登录 + 开发者工具 + 内网穿透</td></tr>
+            <tr><td>文档与实现脱节</td><td>后续维护困难</td><td>每阶段更新 OpenAPI/数据字典/README</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="assumptions">9. 假设</h2>
+      <ul class="small">
+        <li>单人 + AI 辅助、全职投入估算；实际以验收为准。</li>
+        <li>管理后台默认 PC Web；小程序内可保留可选的管理员入口。</li>
+        <li>设备信号默认 MQTT + WebSocket；T0 全虚拟，T1 ESP32 BLE。</li>
+        <li>数据库默认 PostgreSQL；SQLite 仅作环境兜底。</li>
+        <li>本阶段只写计划文档，不写业务代码。</li>
+      </ul>
+
+      <div class="page-nav">
+        <a class="prev" href="index.html">← 总览<b>总览与导航</b></a>
+        <a class="next" href="01-总体架构与技术选型.html">下一份<b>01 · 总体架构与技术选型 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>00 · 全阶段开发计划</b></span>
+      <span>目标、阶段、依赖、DoD</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

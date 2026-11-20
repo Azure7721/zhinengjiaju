@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 · 账号权限与家庭体系</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">03 · Identity &amp; Family</p>
+        <h1>账号、权限与家庭体系</h1>
+        <p class="lead">
+          小程序用户、管理员、家庭成员、设备归属是四条不同的身份关系。
+          本文档定义登录、Token、角色、邀请、设备绑定与越权防护。
+        </p>
+        <div class="meta">
+          <span class="chip">微信登录 + mock</span>
+          <span class="chip">JWT / Refresh</span>
+          <span class="chip">家庭角色</span>
+          <span class="chip">管理员 RBAC</span>
+        </div>
+      </div>
+
+      <h2 id="identities">1. 四类身份</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>身份</th><th>登录方式</th><th>作用域</th><th>存储</th></tr></thead>
+          <tbody>
+            <tr><td><b>小程序用户</b></td><td>微信 code2session；开发期 mock</td><td>自己的家庭与设备</td><td>user + wechat_account</td></tr>
+            <tr><td><b>家庭成员</b></td><td>加入家庭后获得角色</td><td>某个家庭/住宅</td><td>family_member</td></tr>
+            <tr><td><b>管理员</b></td><td>邮箱/密码 + JWT</td><td>后台运营范围</td><td>admin_user + role</td></tr>
+            <tr><td><b>设备</b></td><td>配网 token + serial</td><td>绑定到家庭/用户</td><td>device + device_binding</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="wechat">2. 小程序登录</h2>
+      <h3>2.1 真实流程</h3>
+      <ol class="steps">
+        <li><b>小程序</b>调用 <code class="inline">uni.login({ provider: 'weixin' })</code> 获取临时 <code class="inline">code</code>。</li>
+        <li><b>小程序</b>把 code 发给 <code class="inline">POST /api/v1/auth/wechat/login</code>。</li>
+        <li><b>服务端</b>用 AppID/Secret 调微信 <code class="inline">code2Session</code>，得到 <code class="inline">openid / unionid / session_key</code>。</li>
+        <li><b>服务端</b>按 openid 找/建 user 与 wechat_account，签发 access/refresh token。</li>
+        <li><b>小程序</b>保存 token，后续请求带 <code class="inline">Authorization</code>；WebSocket 用 token 鉴权。</li>
+      </ol>
+<pre><span class="c">// 响应示例</span>
+{
+  "ok": true,
+  "data": {
+    "accessToken": "eyJ...",
+    "refreshToken": "eyJ...",
+    "expiresIn": 7200,
+    "user": { "id": "u_1", "nickname": "Vivian", "avatar": "..." },
+    "families": [{ "id": "f_1", "name": "Vivian的家", "role": "owner" }]
+  }
+}
+</pre>
+
+      <h3>2.2 开发期 mock</h3>
+      <p>没有 AppID 时，服务端提供 <code class="inline">POST /auth/wechat/mock</code>，用 <code class="inline">{ nickname, mockOpenId }</code> 直接建号；通过环境变量 <code class="inline">WECHAT_MOCK=true</code> 启用。**生产环境必须关闭**。</p>
+      <div class="callout warn">
+        <strong>安全：</strong>session_key 不明文存库；只存 hash 或加密值。mock 登录只允许在 <code class="inline">NODE_ENV!=production</code> 下启用。
+      </div>
+
+      <h3>2.3 登录方式选型分析（已定）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>方式</th><th>用户操作</th><th>资质要求</th><th>难度</th><th>成本</th><th>结论</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>① 微信静默登录</b>（wx.login → code2Session 换 openid）</td>
+              <td>零输入，打开即登录</td>
+              <td>个人主体即可，仅需 AppID</td>
+              <td>★ 低（后端一个接口 + openid 唯一键建号）</td>
+              <td>0</td>
+              <td><span class="badge b-red">采用</span> 主登录方式</td>
+            </tr>
+            <tr>
+              <td><b>② 微信手机号快速填充</b>（getPhoneNumber）</td>
+              <td>点一下授权</td>
+              <td><b>企业主体 + 微信认证（约 300 元/年），个人主体不可用</b></td>
+              <td>★★ 中（解密接口 + 隐私弹窗声明）</td>
+              <td>认证费</td>
+              <td><span class="badge b-gray">不做</span> 资质不满足</td>
+            </tr>
+            <tr>
+              <td><b>③ 手机号 + 短信验证码</b></td>
+              <td>输号 → 看短信 → 输码</td>
+              <td>短信签名/模板备案</td>
+              <td>★★ 中（短信通道、Redis 验证码、防刷限流）</td>
+              <td>按条约 3–5 分/条</td>
+              <td><span class="badge b-gray">不做</span> 演示无价值</td>
+            </tr>
+            <tr>
+              <td><b>④ 注册制账号密码</b></td>
+              <td>注册表单 + 找回流程</td>
+              <td>无，但微信规范不允许强制注册才能用核心功能</td>
+              <td>★★★ 高（哈希存储、找回、防撞库）</td>
+              <td>0</td>
+              <td><span class="badge b-amber">仅后台</span> 管理员/测试账号</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="small">
+        <li><b>难度排序</b>：① &lt; ④ &lt; ③ &lt; ②（② 卡在企业认证，个人主体直接不可用）。</li>
+        <li><b>本项目采用</b>：① 微信静默登录（主） + 2.2 mock 登录（开发/无 AppID） + 管理员账号密码（见 §3）。手机号/短信均不做。</li>
+        <li><b>扩展点</b>：后端 <code class="inline">AuthProvider</code> 策略注册表（wechat / mock / password），将来加手机号登录只加一个策略，不动业务代码。</li>
+        <li><b>数据</b>：<code class="inline">users</code> 以 <code class="inline">openid</code> 唯一索引自动建号；<code class="inline">unionid / phone</code> 可空；登录方式记入 <code class="inline">auth_provider</code>，天然支持“先微信登录、后绑定手机号”。</li>
+        <li><b>登录页（无设计稿）</b>：按 00 的 A 类规则新设计——产品图 + 主色登录卡 +「微信一键登录」主按钮 +「演示账号」次按钮 + 底部隐私协议入口；页面路径 <code class="inline">pages/login/index</code>（见 05 页面表）。</li>
+      </ul>
+      <div class="callout warn">
+        <strong>演示形态</strong>：纯个人演示、不挂公网服务器、不发布上线时，① 仍然可用——后端跑本机，真机体验版「打开调试」跳过域名校验直连局域网 IP。完整说明见 <a href="09-测试部署与演示.html#zero-filing">09 · 零备案运行形态</a>。
+      </div>
+
+      <h2 id="tokens">3. Token 与管理员登录</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Token 设计</h3>
+          <ul class="small">
+            <li>Access Token：JWT，2 小时；含 user/admin id、角色、familyId 列表。</li>
+            <li>Refresh Token：随机串，7–30 天；存库可撤销；轮换。</li>
+            <li>WebSocket 首帧/query 带 token；服务端校验后绑定连接。</li>
+            <li>登出/改密/移除成员时撤销 refresh token。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>管理员登录</h3>
+          <ul class="small">
+            <li>邮箱/密码；Argon2id 或 bcrypt 哈希。</li>
+            <li>登录失败限流；连续失败锁定。</li>
+            <li>角色：super_admin / ops / support / viewer。</li>
+            <li>所有写操作写 <code class="inline">audit_log</code>。</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 id="family">4. 家庭与角色</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>操作</th><th>owner</th><th>admin</th><th>member</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>查看家庭/设备</td><td>✓</td><td>✓</td><td>✓</td><td>仅本家庭</td></tr>
+            <tr><td>控制设备</td><td>✓</td><td>✓</td><td>✓</td><td>需设备在本家庭</td></tr>
+            <tr><td>添加/移除设备</td><td>✓</td><td>✓</td><td>—</td><td>member 只能控制</td></tr>
+            <tr><td>创建/编辑场景</td><td>✓</td><td>✓</td><td>—</td><td>member 可执行共享场景</td></tr>
+            <tr><td>邀请成员</td><td>✓</td><td>✓</td><td>—</td><td>邀请码/二维码</td></tr>
+            <tr><td>移除成员</td><td>✓</td><td>—</td><td>—</td><td>owner 专属</td></tr>
+            <tr><td>转让家庭</td><td>✓</td><td>—</td><td>—</td><td>需二次确认</td></tr>
+            <tr><td>删除家庭</td><td>✓</td><td>—</td><td>—</td><td>软删除 + 设备解绑</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">服务端每次请求都校验 <code class="inline">family_member</code> 与角色；前端隐藏按钮只是体验，不是权限。</p>
+
+      <h3>邀请流程</h3>
+      <div class="flow">
+        <span class="step">owner 生成邀请码</span><span class="sep">→</span>
+        <span class="step">分享/扫码</span><span class="sep">→</span>
+        <span class="step">用户登录</span><span class="sep">→</span>
+        <span class="step">校验邀请码/有效期</span><span class="sep">→</span>
+        <span class="step">写入 family_member</span><span class="sep">→</span>
+        <span class="step">WS 通知</span>
+      </div>
+
+      <h2 id="binding">5. 设备绑定与归属</h2>
+      <p>设备添加不是“在内存里加一条”，而是完整链路：</p>
+      <div class="flow">
+        <span class="step">创建配网会话</span><span class="sep">→</span>
+        <span class="step">扫描/连接</span><span class="sep">→</span>
+        <span class="step">写 token</span><span class="sep">→</span>
+        <span class="step">设备上报 serial</span><span class="sep">→</span>
+        <span class="step">校验会话</span><span class="sep">→</span>
+        <span class="step">写 device</span><span class="sep">→</span>
+        <span class="step">写 device_binding</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>字段</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>device_id</td><td>设备实例主键</td></tr>
+            <tr><td>user_id</td><td>绑定操作者/归属人</td></tr>
+            <tr><td>family_id / home_id / room_id</td><td>归属家庭/住宅/房间</td></tr>
+            <tr><td>bound_at / unbound_at</td><td>当前绑定 = unbound_at IS NULL</td></tr>
+            <tr><td>source</td><td>ble / qr / manual / admin</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small">设备迁移/解绑必须校验 owner/admin 权限，并写审计；设备被解绑后立即停止向该家庭推送。</p>
+
+      <h2 id="rbac">6. 管理员 RBAC</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>能力</th><th>super_admin</th><th>ops</th><th>support</th><th>viewer</th></tr></thead>
+          <tbody>
+            <tr><td>查看仪表盘/日志</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>用户/家庭查看</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>设备型号/能力编辑</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr>
+            <tr><td>设备库存/绑定管理</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr>
+            <tr><td>场景模板</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr>
+            <tr><td>管理员/角色管理</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><td>审计导出</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small">权限码示例：<code class="inline">device_model:write</code>、<code class="inline">device:bind</code>、<code class="inline">audit:read</code>。后端 Guard + 前端菜单/按钮双重控制。</p>
+
+      <h2 id="security">7. 安全清单</h2>
+      <ul class="checklist">
+        <li>密码哈希（Argon2id/bcrypt），不存明文</li>
+        <li>JWT 短有效期 + refresh 轮换 + 撤销</li>
+        <li>登录/命令/配网限流</li>
+        <li>越权校验在后端，不信任前端 familyId</li>
+        <li>配网 token 一次性、过期、哈希存储</li>
+        <li>审计所有写操作与设备绑定变更</li>
+        <li>敏感配置走环境变量，不入库/不入仓</li>
+      </ul>
+
+      <h2 id="acceptance">8. 验收</h2>
+      <ul class="checklist">
+        <li>微信 mock 登录成功，返回 family 列表</li>
+        <li>有 AppID 时：真机体验版（打开调试）微信一键登录成功，users 落 openid</li>
+        <li>登录页无设计稿，按 A 类新设计：微信一键登录 + 演示账号 + 隐私协议入口</li>
+        <li>管理员登录成功，菜单按角色显示</li>
+        <li>member 不能添加/移除设备，返回 403</li>
+        <li>非家庭成员不能读取设备/场景</li>
+        <li>绑定设备后 DB 归属正确，后台可查</li>
+        <li>解绑/迁移后原家庭不再收到推送</li>
+        <li>所有写操作有 audit_log</li>
+      </ul>
+
+      <div class="page-nav">
+        <a class="prev" href="02-数据模型与接口契约.html">← 上一份<b>02 · 数据模型与接口契约</b></a>
+        <a class="next" href="04-设备引擎与信号适配.html">下一份<b>04 · 设备引擎与信号适配 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>03 · 账号权限与家庭体系</b></span>
+      <span>登录、Token、家庭角色、设备绑定、RBAC</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

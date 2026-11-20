@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · 小程序用户端</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">05 · Mini Program</p>
+        <h1>小程序用户端</h1>
+        <p class="lead">
+          用户端负责“找设备、读状态、快操作、得反馈”。页面要贴合设计稿，但控制区必须由设备能力动态生成，
+          不能把四类设备写死成四套页面。
+        </p>
+        <div class="meta">
+          <span class="chip">uni-app + Vue 3</span>
+          <span class="chip">Wot Design Uni</span>
+          <span class="chip">uCharts</span>
+          <span class="chip">Pinia</span>
+          <span class="chip">750rpx</span>
+        </div>
+      </div>
+
+      <h2 id="goals">1. 目标</h2>
+      <ul>
+        <li>完成登录、首页、全屋、设备、场景、添加设备、消息、能耗、我的。</li>
+        <li>设备详情按 capabilities 动态渲染；未知能力有降级控件。</li>
+        <li>状态来自服务端/WS，刷新不丢；操作有 pending/success/failed。</li>
+        <li>添加设备后出现在首页，并与账号/家庭绑定。</li>
+        <li>核心体验验收：3 秒找到运行设备、操作 ≤2 步、每次操作有反馈。</li>
+      </ul>
+
+      <h2 id="structure">2. 页面与导航</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>页面</th><th>路径</th><th>核心内容</th></tr></thead>
+          <tbody>
+            <tr><td>登录/家庭选择</td><td>pages/login/index</td><td>微信登录、mock 登录、家庭列表/创建</td></tr>
+            <tr><td>首页</td><td>pages/home/index</td><td>环境、房间筛选、运行设备、快捷开关、入口</td></tr>
+            <tr><td>全屋控制</td><td>pages/all-home/index</td><td>平面图/设备热点、分区、快捷模式</td></tr>
+            <tr><td>设备详情</td><td>pages/device/detail?id=</td><td>状态区 + 动态控制区 + 更多功能</td></tr>
+            <tr><td>场景列表</td><td>pages/scene/index</td><td>常用、自动/手动、执行</td></tr>
+            <tr><td>场景详情</td><td>pages/scene/detail?id=</td><td>动作、触发条件、执行、逐项状态</td></tr>
+            <tr><td>添加设备</td><td>pkgAdd/index/index</td><td>扫描、附近设备、连接</td></tr>
+            <tr><td>配网连接</td><td>pkgAdd/connect/index</td><td>倒计时、步骤、失败引导</td></tr>
+            <tr><td>消息</td><td>pages/notification/index</td><td>告警/场景完成/离线</td></tr>
+            <tr><td>能耗</td><td>pkgEnergy/index/index</td><td>日/周/月、趋势、排名</td></tr>
+            <tr><td>我的</td><td>pages/mine/index</td><td>家庭、设备统计、设置、服务入口</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">TabBar 5 个：首页、场景、发现、商城、我的。发现/商城等无 UI 版块按“入口盘点”规则处理；管理员入口可选。</p>
+
+      <h3 id="entry-audit">2.1 入口盘点：空缺页面处理清单</h3>
+      <p class="small">设计稿有按钮但没有页面的入口，按 <a href="00-全阶段开发计划.html#ui-gap">00 · UI 空缺入口处理规则</a> 分两类处理：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>入口 / 按钮</th><th>出现位置</th><th>归类</th><th>处理方式</th></tr></thead>
+          <tbody>
+            <tr><td>设置（账号安全、消息通知、通用、关于）</td><td>我的 → 设置</td><td><span class="badge b-red">A 必要</span></td><td>新设计页：分组列表 + 开关/表单，沿用现有风格，保留必要项</td></tr>
+            <tr><td>家庭管理（创建/切换/成员/房间）</td><td>我的、登录后家庭选择</td><td><span class="badge b-red">A 必要</span></td><td>新设计页：家庭列表、成员增删、房间编辑，接 P1 家庭/权限 API</td></tr>
+            <tr><td>设备编辑（改名/移房间/解绑/删除）</td><td>设备详情 · 更多功能</td><td><span class="badge b-red">A 必要</span></td><td>新设计页或弹层：三四个表单项，落库绑定关系</td></tr>
+            <tr><td>WiFi / 网络管理</td><td>我的、配网失败引导</td><td><span class="badge b-red">A 必要</span></td><td>新设计页：当前网络、重新配网入口，复用配网流程</td></tr>
+            <tr><td>退出登录</td><td>我的 → 设置</td><td><span class="badge b-red">A 必要</span></td><td>确认弹窗 + 清 token 回登录页</td></tr>
+            <tr><td>消息通知详情 / 告警处理</td><td>消息列表</td><td><span class="badge b-red">A 必要</span></td><td>列表项内跳转，告警可标记已读/跳设备</td></tr>
+            <tr><td>天气入口</td><td>首页环境区</td><td><span class="badge b-amber">A 简化</span></td><td>静态数据或 mock，点开提示“演示数据”</td></tr>
+            <tr><td>发现（内容流、活动位）</td><td>TabBar</td><td><span class="badge b-gray">B 占位</span></td><td>点击 toast「正在开发中」；Tab 保留</td></tr>
+            <tr><td>商城（商品、下单）</td><td>TabBar、我的</td><td><span class="badge b-gray">B 占位</span></td><td>同上，不做内容与订单</td></tr>
+            <tr><td>健康生活（排行、打卡）</td><td>首页/我的入口</td><td><span class="badge b-gray">B 占位</span></td><td>同上</td></tr>
+            <tr><td>会员卡 / 权益、耗材商城</td><td>我的</td><td><span class="badge b-gray">B 占位</span></td><td>卡面可静态展示，点击「正在开发中」</td></tr>
+            <tr><td>第三方平台、个人服务运营位</td><td>我的</td><td><span class="badge b-gray">B 占位</span></td><td>同上</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="small">
+        <li><b>A 类</b>（必要/设置）：按现有 UI 风格新设计页面，只保留必要功能；每个页面控制在最小操作集。</li>
+        <li><b>B 类</b>（丰富但无 UI）：统一用 <code class="inline">feedback/UnderDev</code> 占位组件，点击弹「正在开发中」；不做后端接口。</li>
+        <li>开发中发现新入口按 00 的规则归类并回填本表。</li>
+      </ul>
+
+      <h2 id="design">3. 设计还原</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>尺寸与令牌</h3>
+          <ul class="small">
+            <li>设计稿 750×1624 JPG ≈ 375×812 @2x；小程序按 750rpx 写，1 设计 px ≈ 1rpx。</li>
+            <li>主色青绿 <code class="inline">#12BFC1</code>；背景 <code class="inline">#F2F7F8</code>；卡片白。</li>
+            <li>圆角 16–24rpx；阴影弱；字号按图分层。</li>
+            <li>底部安全区 <code class="inline">env(safe-area-inset-bottom)</code>。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>缺失素材</h3>
+          <ul class="small">
+            <li>产品图需透明底；没有就用同色底占位。</li>
+            <li>图标用 iconfont/PNG；不用内联 SVG。</li>
+            <li>字体用系统字体，按视觉调字重。</li>
+            <li>渐变/阴影/毛玻璃按图试值，统一 token。</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 id="architecture">4. 前端结构</h2>
+<pre>src/
+  pages/
+    home/index.vue
+    all-home/index.vue
+    device/detail.vue
+    scene/index.vue
+    scene/detail.vue
+    mine/index.vue
+  pkgAdd/                 <span class="c"># 分包：扫描/配网</span>
+  pkgEnergy/              <span class="c"># 分包：能耗</span>
+  components/
+    device/               <span class="c"># 动态控制组件注册表</span>
+    scene/
+    common/               <span class="c"># Card、Stat、Empty、Sheet</span>
+    feedback/             <span class="c"># Toast、InlineStatus、Retry、UnderDev（“正在开发中”占位）</span>
+  core/                   <span class="c"># types、stores、commands、scene-engine</span>
+  platform/               <span class="c"># ble、storage、request、nav、toast</span>
+  static/
+  styles/
+</pre>
+
+      <h3>4.1 动态控件注册表</h3>
+<pre><span class="k">const</span> CONTROL_REGISTRY = {
+  switch: PowerSwitch,
+  temperature: TemperatureDial,
+  position: CurtainSlider,
+  mode: ModeSegmented,
+  fanSpeed: FanSegmented,
+  remote: TvRemote,
+  pm25: Pm25Panel,
+  brightness: BrightnessSlider,
+  <span class="c">// 未知能力 → GenericControl</span>
+};
+</pre>
+      <p class="small">设备详情只渲染“状态区 + capabilities 控件列表”；新增设备类型不需要新增页面。</p>
+
+      <h3>4.2 BLE 适配器</h3>
+      <p><code class="inline">platform/ble</code> 暴露统一接口：<code class="inline">scan / connect / discover / read / write / subscribe / disconnect</code>。通过环境变量切换 <code class="inline">RealBleAdapter</code>（uni BLE）与 <code class="inline">VirtualBleAdapter</code>（WebSocket），业务代码不变。</p>
+
+      <h2 id="pages">5. 关键页面</h2>
+
+      <h3>5.1 首页</h3>
+      <ul class="small">
+        <li>环境三指标（温度/湿度/空气质量）+ 家庭名 + 天气入口。</li>
+        <li>房间 Tab（工作中/客厅/主卧/厨房/卫生间/餐厅），选中态明显。</li>
+        <li>运行设备卡：模式、剩余时间、进度条；卡片主信息是状态。</li>
+        <li>快捷开关：床头灯/音响；点击立即乐观更新 + 反馈。</li>
+        <li>空状态：没有设备 → 引导添加；没有运行 → 显示环境与快捷入口。</li>
+      </ul>
+
+      <h3>5.2 全屋控制</h3>
+      <ul class="small">
+        <li>平面图底图 + 百分比坐标热点；点区域/标签同步高亮。</li>
+        <li>环境/照明/监控分区；设备在线/运行/告警标识。</li>
+        <li>快捷模式（清凉干爽/舒适宜人/温暖湿润）触发场景。</li>
+        <li>小屏时平面图可缩放/滚动，不强行塞满。</li>
+      </ul>
+
+      <h3>5.3 设备详情</h3>
+      <ul class="small">
+        <li>头部：设备名、房间、在线状态、电源键。</li>
+        <li>状态区：温度/PM2.5/开合度/模式，大字 + 单位 + 状态标签。</li>
+        <li>控制区：按 capabilities 渲染；空调圆盘、窗帘滑杆、电视遥控、净化器模式。</li>
+        <li>命令三态：pending（禁用+进度）、success（Toast/轻震）、failed（原因+重试）。</li>
+        <li>更多功能：低频操作收进底部弹层，保持首屏清爽。</li>
+      </ul>
+
+      <h3>5.4 添加设备与配网</h3>
+      <ol class="steps">
+        <li><b>扫描</b>：权限检查 → 扫描动画/进度 → 附近设备列表；空/失败给“确认电源/靠近设备”。</li>
+        <li><b>连接</b>：倒计时 18s、步骤节点（数据发送/联网/添加）、可取消。</li>
+        <li><b>绑定</b>：选家庭/房间/名称 → 写库 → 首页出现。</li>
+        <li><b>失败</b>：token 过期、设备已绑定、超时、WiFi 失败，各有明确文案。</li>
+      </ol>
+
+      <h3>5.5 场景</h3>
+      <ul class="small">
+        <li>常用场景 chips；自动/手动标签；推荐/自定义分区。</li>
+        <li>详情：执行区固定按钮、设备动作列表、触发条件、生效时间。</li>
+        <li>执行：逐项状态（pending/running/success/failed），完成后汇总。</li>
+        <li>清洁模式：进度/剩余时间/模式/配件选择。</li>
+      </ul>
+
+      <h3>5.6 能耗</h3>
+      <ul class="small">
+        <li>今天/本周/本月；uCharts 折线；峰值标注。</li>
+        <li>电费、平均用电、碳排；设备排名进度条 + 占比。</li>
+        <li>优化建议来自规则（如空调 26℃），不硬编码文案。</li>
+      </ul>
+
+      <h3>5.7 我的</h3>
+      <ul class="small">
+        <li>设备/运行/成员/WiFi 统计；家庭切换。</li>
+        <li>入口分组：家庭管理、个人服务、设置。</li>
+        <li>会员卡、二维码、耗材、第三方平台可静态。</li>
+      </ul>
+
+      <h2 id="state">6. 状态、实时与离线</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Pinia Stores</h3>
+          <ul class="small">
+            <li><code class="inline">device</code>：设备、状态、在线、命令</li>
+            <li><code class="inline">scene</code>：场景、执行、触发</li>
+            <li><code class="inline">energy</code>：时间范围、聚合</li>
+            <li><code class="inline">user</code>：登录、家庭、角色</li>
+            <li><code class="inline">ui</code>：Toast、弹层、加载</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>实时与缓存</h3>
+          <ul class="small">
+            <li>WS 订阅 <code class="inline">device.state / device.telemetry / command.updated / scene.run.updated</code>。</li>
+            <li>断线重连 + 指数退避；重连后拉取全量状态。</li>
+            <li>本地缓存最近状态；离线时只读并标记。</li>
+            <li>命令乐观更新，失败回滚。</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 id="acceptance">7. 验收</h2>
+      <ul class="checklist">
+        <li>微信 mock 登录 → 家庭选择 → 首页</li>
+        <li>3 秒内找到运行设备及其状态</li>
+        <li>首页到完成一次温度调节 ≤2 步</li>
+        <li>四类设备可控，未知能力不白屏</li>
+        <li>添加设备 → 配网 → 绑定 → 首页出现</li>
+        <li>执行场景，逐项状态可见</li>
+        <li>刷新/重连后状态不丢</li>
+        <li>主流 iPhone/Android 不破版</li>
+        <li>无控制台报错，关键操作有反馈</li>
+        <li>A 类空缺页（设置/家庭管理/设备编辑等）按现有 UI 风格可走通</li>
+        <li>B 类版块（发现/商城/健康生活/会员等）点击均提示“正在开发中”，无死按钮</li>
+      </ul>
+
+      <div class="page-nav">
+        <a class="prev" href="04-设备引擎与信号适配.html">← 上一份<b>04 · 设备引擎与信号适配</b></a>
+        <a class="next" href="06-管理后台.html">下一份<b>06 · 管理后台 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>05 · 小程序用户端</b></span>
+      <span>页面、动态控件、状态、实时、验收</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

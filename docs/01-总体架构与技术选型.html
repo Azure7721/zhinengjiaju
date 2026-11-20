@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 · 总体架构与技术选型</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">01 · Architecture</p>
+        <h1>总体架构与技术选型</h1>
+        <p class="lead">
+          目标不是“把 13 张图变成页面”，而是建立一套能持续加设备、加能力、加场景的系统。
+          本文档定义单仓结构、技术栈、模块边界、扩展机制、数据流与部署拓扑。
+        </p>
+        <div class="meta">
+          <span class="chip">pnpm workspaces</span>
+          <span class="chip">uni-app + Vue 3</span>
+          <span class="chip">NestJS + Prisma</span>
+          <span class="chip">PostgreSQL + Redis + MQTT</span>
+        </div>
+      </div>
+
+      <h2 id="goals">1. 架构目标</h2>
+      <div class="grid-3">
+        <div class="card teal"><h3>可扩展</h3><p class="small">新增设备类型、能力、场景动作、协议，不复制页面、不改核心业务。</p></div>
+        <div class="card teal"><h3>可验证</h3><p class="small">每条链路有测试：单元、集成、端到端、T0 虚拟、T1 BLE。</p></div>
+        <div class="card teal"><h3>可运营</h3><p class="small">管理员能配置设备型号、查看日志、审计操作、模拟设备。</p></div>
+      </div>
+
+      <h2 id="monorepo">2. 单仓结构</h2>
+<pre>smart-home/
+  apps/
+    miniapp/          <span class="c"># 微信小程序（uni-app + Vue 3）</span>
+    admin/            <span class="c"># PC 管理后台（Vue 3 + Element Plus）</span>
+    server/           <span class="c"># NestJS API / WebSocket / MQTT 桥接</span>
+    device-engine/    <span class="c"># 模拟设备引擎 + 虚拟 BLE 服务</span>
+  packages/
+    shared/           <span class="c"># 类型、常量、错误码、工具</span>
+    contracts/        <span class="c"># OpenAPI、WS、MQTT 消息契约</span>
+  firmware/
+    esp32-ble-sim/    <span class="c"># 可选：ESP32 BLE 外设固件</span>
+  infra/
+    docker-compose.yml
+    nginx/
+  docs/               <span class="c"># 本计划文档集</span>
+  package.json
+  pnpm-workspace.yaml
+  tsconfig.base.json
+</pre>
+      <p class="small muted">使用 pnpm workspaces；不引入 Turborepo/Nx，减少学习成本；需要时再用 `pnpm -r` 并行执行。</p>
+
+      <h2 id="stack">3. 技术栈</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>层</th><th>选型</th><th>理由</th><th>替代/备注</th></tr></thead>
+          <tbody>
+            <tr><td>小程序</td><td>uni-app + Vue 3 + TS + Pinia</td><td>小程序为主、H5/App 可复用；生态成熟</td><td>UI：Wot Design Uni；图表：uCharts</td></tr>
+            <tr><td>管理后台</td><td>Vue 3 + Vite + TS + Element Plus</td><td>表格/表单/权限菜单成熟，适合运营后台</td><td>图表：ECharts</td></tr>
+            <tr><td>服务端</td><td>NestJS + TypeScript</td><td>模块化、DI、Guard/Interceptor、易扩展</td><td>Fastify 适配器提升吞吐</td></tr>
+            <tr><td>ORM</td><td>Prisma</td><td>类型安全、迁移、种子数据</td><td>复杂查询可落原生 SQL</td></tr>
+            <tr><td>数据库</td><td>PostgreSQL</td><td>JSONB、索引、事务、时序数据可扩展</td><td>SQLite 仅开发兜底</td></tr>
+            <tr><td>缓存/队列</td><td>Redis + BullMQ</td><td>限流、缓存、场景调度、重试</td><td>P0 可先内存，P5 前替换</td></tr>
+            <tr><td>消息</td><td>MQTT（Aedes 开发 / Mosquitto 生产）</td><td>设备信号与命令的标准通道</td><td>WebSocket 也可复用</td></tr>
+            <tr><td>实时</td><td>WebSocket（NestJS Gateway）</td><td>小程序/后台实时状态</td><td>JWT 鉴权</td></tr>
+            <tr><td>测试</td><td>Vitest、Supertest、Playwright</td><td>单元/集成/E2E</td><td>小程序自动化可选</td></tr>
+            <tr><td>部署</td><td>Docker Compose / 本机服务</td><td>可复现；Windows 可降级</td><td>Nginx + HTTPS</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="diagram">4. 系统架构</h2>
+      <div class="arch">
+        <div class="arch-split">
+          <div class="arch-row"><div class="name">微信小程序用户端</div><div class="desc">uni-app · Vue3 · Pinia · Wot Design Uni · uCharts</div></div>
+          <div class="arch-row"><div class="name">PC 管理后台</div><div class="desc">Vue3 · Element Plus · ECharts · 动态表单</div></div>
+        </div>
+        <div class="arrow"><b>↕</b>HTTPS REST / WebSocket（JWT）</div>
+        <div class="arch-row">
+          <div class="name">NestJS 服务端</div>
+          <div class="desc">Auth · Family · Device · Scene · Telemetry · Command · Admin · Audit · WS Gateway</div>
+        </div>
+        <div class="arrow"><b>↕</b>Prisma / MQTT / Redis</div>
+        <div class="arch-split">
+          <div class="arch-row"><div class="name">PostgreSQL</div><div class="desc">用户、家庭、设备、绑定、遥测、命令、场景、审计</div></div>
+          <div class="arch-row"><div class="name">Redis + BullMQ</div><div class="desc">缓存、限流、场景调度、重试队列</div></div>
+        </div>
+        <div class="arrow"><b>↕</b>MQTT topics</div>
+        <div class="arch-split">
+          <div class="arch-row"><div class="name">设备引擎 / 虚拟 BLE</div><div class="desc">模拟设备、telemetry、command、ack、故障注入</div></div>
+          <div class="arch-row"><div class="name">ESP32 BLE 外设（可选）</div><div class="desc">广播、GATT、配网、WiFi + MQTT</div></div>
+        </div>
+      </div>
+
+      <h2 id="modules">5. 模块边界</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模块</th><th>负责</th><th>不负责</th><th>对外契约</th></tr></thead>
+          <tbody>
+            <tr><td><b>miniapp</b></td><td>用户交互、动态控件、实时展示、离线缓存</td><td>业务规则、设备协议、权限判断</td><td>REST/WS 客户端</td></tr>
+            <tr><td><b>admin</b></td><td>运营配置、设备型号/能力、日志、审计、模拟器</td><td>设备控制协议、用户端 UI</td><td>REST/WS 管理端</td></tr>
+            <tr><td><b>server</b></td><td>认证、家庭、设备、场景、命令、遥测、权限、审计</td><td>设备固件、UI 渲染</td><td>OpenAPI + WS + MQTT</td></tr>
+            <tr><td><b>device-engine</b></td><td>模拟设备、信号生成、命令执行、ack、故障注入</td><td>用户/家庭权限、业务编排</td><td>MQTT + 虚拟 BLE WS</td></tr>
+            <tr><td><b>shared</b></td><td>类型、常量、错误码、纯工具</td><td>运行时依赖、平台 API</td><td>npm 包</td></tr>
+            <tr><td><b>contracts</b></td><td>OpenAPI、WS/MQTT schema、示例</td><td>业务实现</td><td>JSON Schema / TS 类型</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="extensibility">6. 可扩展机制（核心）</h2>
+
+      <h3>6.1 设备模型元数据</h3>
+      <p>设备型号不是代码里的 enum，而是数据库记录：</p>
+<pre><span class="c">// device_model.metadata 示例</span>
+{
+  "model": "ac.dual.v1",
+  "name": "双模空调",
+  "category": "climate",
+  "capabilities": [
+    { "key": "switch", "type": "boolean", "control": "switch" },
+    { "key": "temperature", "type": "number", "min": 16, "max": 30, "unit": "℃", "control": "dial" },
+    { "key": "mode", "type": "enum", "values": ["cool", "heat", "auto"], "control": "segmented" },
+    { "key": "fanSpeed", "type": "enum", "values": ["low", "mid", "high"], "control": "segmented" }
+  ],
+  "commands": [
+    { "name": "setPower", "params": { "value": "boolean" } },
+    { "name": "setTemperature", "params": { "value": "number" } },
+    { "name": "setMode", "params": { "value": "enum" } }
+  ]
+}
+</pre>
+      <p class="small">小程序读取 capabilities 渲染控制区；未知 control 走通用控件（开关/滑杆/输入），不会白屏。</p>
+
+      <h3>6.2 能力注册表</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>capability</th><th>默认控件</th><th>状态字段</th><th>命令</th></tr></thead>
+          <tbody>
+            <tr><td>switch</td><td>开关</td><td>power</td><td>setPower</td></tr>
+            <tr><td>temperature</td><td>圆盘/加减</td><td>targetTemp, currentTemp</td><td>setTemperature</td></tr>
+            <tr><td>position</td><td>百分比滑杆</td><td>position</td><td>setPosition</td></tr>
+            <tr><td>mode</td><td>分段选择</td><td>mode</td><td>setMode</td></tr>
+            <tr><td>fanSpeed</td><td>分段/滑杆</td><td>fanSpeed</td><td>setFanSpeed</td></tr>
+            <tr><td>remote</td><td>方向键/遥控</td><td>key</td><td>sendKey</td></tr>
+            <tr><td>pm25</td><td>数值 + 等级</td><td>pm25</td><td>—</td></tr>
+            <tr><td>brightness</td><td>亮度滑杆</td><td>brightness</td><td>setBrightness</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>6.3 协议适配器</h3>
+<pre><span class="k">interface</span> DeviceAdapter {
+  connect(device: DeviceRef): Promise&lt;<span class="k">void</span>&gt;;
+  disconnect(device: DeviceRef): Promise&lt;<span class="k">void</span>&gt;;
+  sendCommand(device: DeviceRef, cmd: DeviceCommand): Promise&lt;CommandAck&gt;;
+  onTelemetry(handler: (msg: TelemetryMessage) =&gt; <span class="k">void</span>): <span class="k">void</span>;
+}
+</pre>
+      <p class="small">实现：<code class="inline">MockAdapter</code>、<code class="inline">VirtualBleAdapter</code>、<code class="inline">MqttAdapter</code>、<code class="inline">RealBleAdapter</code>。业务层只依赖接口。</p>
+
+      <h3>6.4 命令总线</h3>
+      <div class="flow">
+        <span class="step">REST 命令</span><span class="sep">→</span>
+        <span class="step">校验/鉴权</span><span class="sep">→</span>
+        <span class="step">幂等键</span><span class="sep">→</span>
+        <span class="step">落库</span><span class="sep">→</span>
+        <span class="step">MQTT/BLE</span><span class="sep">→</span>
+        <span class="step">设备 ack</span><span class="sep">→</span>
+        <span class="step">WS 推送</span>
+      </div>
+      <p class="small">超时重试、失败状态、审计、重复 cmdId 去重；命令结果可追踪。</p>
+
+      <h3>6.5 场景 DSL</h3>
+<pre><span class="k">interface</span> Scene {
+  id: <span class="k">string</span>;
+  name: <span class="k">string</span>;
+  triggers: Trigger[];   <span class="c">// manual / schedule / condition / deviceEvent</span>
+  conditions: Condition[];
+  actions: SceneAction[];
+  enabled: <span class="k">boolean</span>;
+}
+</pre>
+      <p class="small">触发器与动作都通过 strategy registry 扩展；新增“日落触发”或“延迟动作”只加策略，不改执行器。</p>
+
+      <h3>6.6 动态 UI</h3>
+      <p>小程序 <code class="inline">ControlRenderer</code> 根据 capability/control 选择组件；管理后台 <code class="inline">SchemaForm</code> 根据 JSON Schema 生成表单。设计稿里的四类设备只是模板，不是上限。</p>
+
+      <h3>6.7 权限与审计</h3>
+      <p>管理员 RBAC 到菜单/按钮；家庭角色 owner/admin/member；设备命令校验归属；所有写操作落 <code class="inline">audit_log</code>。</p>
+
+      <h3>6.8 API 版本化</h3>
+      <p>REST 统一 <code class="inline">/api/v1</code>；WS/MQTT 消息带 <code class="inline">v</code> 字段；破坏性变更升版本，旧版本保留一个迭代。</p>
+
+      <h2 id="dataflow">7. 三条数据流</h2>
+      <div class="grid-3">
+        <div class="card">
+          <h3>遥测</h3>
+          <p class="small">设备引擎 → MQTT <code class="inline">device/{id}/telemetry</code> → server 订阅 → 落库 → WS 推送 → 小程序/后台。</p>
+        </div>
+        <div class="card">
+          <h3>命令</h3>
+          <p class="small">小程序 → REST → 校验/幂等 → MQTT <code class="inline">device/{id}/command</code> → 设备 → ack → server → WS。</p>
+        </div>
+        <div class="card">
+          <h3>场景</h3>
+          <p class="small">触发（手动/定时/条件）→ 执行器 → 逐动作命令 → 结果记录 → WS 推送执行进度。</p>
+        </div>
+      </div>
+
+      <h2 id="deploy">8. 部署拓扑</h2>
+      <div class="grid-2">
+        <div class="card teal">
+          <h3>开发/演示（单机）</h3>
+          <p class="small">server 3000、admin 5173、MQTT 1883/8888、虚拟 BLE 7001、PostgreSQL 5432；小程序开发者工具连 localhost。</p>
+          <p class="small muted">Docker Compose 优先；不可用时本机服务；最后 SQLite + Aedes 兜底。</p>
+        </div>
+        <div class="card teal">
+          <h3>测试/生产（可选）</h3>
+          <p class="small">Nginx + HTTPS；server 多实例；PostgreSQL/Redis 托管；MQTT 用 Mosquitto/EMQX；对象存储放图片。</p>
+          <p class="small muted">小程序 request/socket 域名白名单；体验版二维码。</p>
+        </div>
+      </div>
+
+      <h2 id="adr">9. 架构决策记录（ADR）</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>决策</th><th>选择</th><th>理由</th><th>代价</th></tr></thead>
+          <tbody>
+            <tr><td>小程序技术</td><td>uni-app + Vue 3</td><td>多端复用、团队熟悉、生态好</td><td>部分 Web 能力不可用</td></tr>
+            <tr><td>服务端</td><td>NestJS</td><td>模块化/DI/守卫，适合长期扩展</td><td>比 Fastify 裸写重</td></tr>
+            <tr><td>数据库</td><td>PostgreSQL + JSONB</td><td>关系 + 弹性元数据</td><td>需要运维/迁移</td></tr>
+            <tr><td>设备信号</td><td>MQTT + WS</td><td>标准、可替换真实设备</td><td>多一个 broker 组件</td></tr>
+            <tr><td>设备扩展</td><td>元数据 + 能力注册表</td><td>不写死按钮</td><td>前期建模成本</td></tr>
+            <tr><td>BLE 测试</td><td>ESP32 + 虚拟 BLE</td><td>真实信号 + 无硬件可演示</td><td>硬件/权限差异</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="risks">10. 取舍与风险</h2>
+      <ul class="small">
+        <li><b>不要过度抽象：</b>首批只做 4 类设备 + 1 个未知能力；等第二种设备型号接入时再补通用层。</li>
+        <li><b>不要把权限放前端：</b>所有归属与角色判断在服务端；前端只控制展示。</li>
+        <li><b>不要用前端定时器代替信号：</b>演示也走 MQTT/虚拟 BLE，保证链路真实。</li>
+        <li><b>不要一开始上微服务：</b>单 NestJS + 独立 device-engine 足够，按需拆分。</li>
+      </ul>
+
+      <div class="page-nav">
+        <a class="prev" href="00-全阶段开发计划.html">← 上一份<b>00 · 全阶段开发计划</b></a>
+        <a class="next" href="02-数据模型与接口契约.html">下一份<b>02 · 数据模型与接口契约 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>01 · 总体架构与技术选型</b></span>
+      <span>单仓、模块边界、扩展机制、数据流、部署</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

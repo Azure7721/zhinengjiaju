@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · 数据模型与接口契约</title>
+<link rel="stylesheet" href="assets/plan.css">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main">
+    <header id="topbar" class="topbar"></header>
+    <main class="content">
+
+      <div class="page-head">
+        <p class="kicker">02 · Data &amp; Contracts</p>
+        <h1>数据模型与接口契约</h1>
+        <p class="lead">
+          统一 REST、WebSocket、MQTT 与数据库的“同一套事实”。设备绑定、遥测、命令、场景执行
+          都必须可追溯到人、家庭、设备和时间。
+        </p>
+        <div class="meta">
+          <span class="chip">PostgreSQL + Prisma</span>
+          <span class="chip">REST /api/v1</span>
+          <span class="chip">WS 事件</span>
+          <span class="chip">MQTT topics</span>
+        </div>
+      </div>
+
+      <h2 id="goals">1. 设计目标</h2>
+      <ul>
+        <li>设备添加必须落库并绑定账号/家庭/住宅/房间，不能只存在前端。</li>
+        <li>设备型号与能力用 JSONB 存，新增品类不改表结构。</li>
+        <li>遥测是追加型时序数据，命令是状态机数据，场景执行有 run/action 级记录。</li>
+        <li>所有写操作可审计；所有接口有统一错误码与幂等约定。</li>
+        <li>WS/MQTT 消息带版本字段，契约集中在 <code class="inline">packages/contracts</code>。</li>
+      </ul>
+
+      <h2 id="domain">2. 领域模型总览</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>领域</th><th>实体</th><th>关系</th></tr></thead>
+          <tbody>
+            <tr><td>账号</td><td>User、WeChatAccount、AdminUser、Role、Permission</td><td>User ↔ WeChatAccount 1:1；AdminUser ↔ Role N:N</td></tr>
+            <tr><td>家庭</td><td>Family、FamilyMember、Home、Room</td><td>Family 1:N Home；Home 1:N Room；Family N:N User</td></tr>
+            <tr><td>设备</td><td>DeviceModel、DeviceCapability、Device、DeviceBinding、DeviceState</td><td>Model 1:N Device；Device 1:1 State；Device 1:N Binding</td></tr>
+            <tr><td>信号</td><td>Telemetry、Command、CommandAck</td><td>Device 1:N Telemetry/Command；Command 1:1 Ack</td></tr>
+            <tr><td>场景</td><td>Scene、SceneTrigger、SceneAction、SceneRun、SceneRunAction</td><td>Scene 1:N Trigger/Action；Run 1:N RunAction</td></tr>
+            <tr><td>运营</td><td>Notification、AuditLog、ProvisioningSession</td><td>User/Admin/Device 关联</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="tables">3. 核心表</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>表</th><th>关键字段</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><b>user</b></td><td>id, phone, nickname, avatar, status, created_at</td><td>小程序用户</td></tr>
+            <tr><td><b>wechat_account</b></td><td>id, user_id, openid, unionid, session_key_hash</td><td>微信身份绑定；不存明文 session_key</td></tr>
+            <tr><td><b>family</b></td><td>id, name, owner_id, created_at</td><td>家庭</td></tr>
+            <tr><td><b>family_member</b></td><td>family_id, user_id, role(owner/admin/member), joined_at</td><td>成员与角色，唯一约束 (family_id,user_id)</td></tr>
+            <tr><td><b>home</b></td><td>id, family_id, name, address, cover</td><td>住宅，可多套</td></tr>
+            <tr><td><b>room</b></td><td>id, home_id, name, sort</td><td>房间</td></tr>
+            <tr><td><b>device_model</b></td><td>id, code, name, category, brand, metadata_json, image, status</td><td>设备型号与能力/命令元数据</td></tr>
+            <tr><td><b>device</b></td><td>id, model_id, home_id, room_id, name, serial_no, status, created_at</td><td>设备实例；serial_no 业务唯一</td></tr>
+            <tr><td><b>device_binding</b></td><td>id, device_id, user_id, family_id, home_id, room_id, bound_at, unbound_at</td><td>设备归属；当前绑定用 unbound_at IS NULL</td></tr>
+            <tr><td><b>device_state</b></td><td>device_id, online, state_json, updated_at</td><td>最新状态（设备影子）</td></tr>
+            <tr><td><b>telemetry</b></td><td>id, device_id, ts, metrics_json</td><td>追加型遥测；按时间索引</td></tr>
+            <tr><td><b>command</b></td><td>id, device_id, user_id, cmd_id, capability, name, params_json, status, created_at, finished_at</td><td>命令；cmd_id 幂等</td></tr>
+            <tr><td><b>command_ack</b></td><td>command_id, status, error_code, message, acked_at</td><td>设备回执</td></tr>
+            <tr><td><b>scene</b></td><td>id, home_id, name, cover, enabled, mode, created_by</td><td>场景</td></tr>
+            <tr><td><b>scene_trigger</b></td><td>id, scene_id, type, config_json, enabled</td><td>manual/schedule/condition/deviceEvent</td></tr>
+            <tr><td><b>scene_action</b></td><td>id, scene_id, device_id, command, params_json, delay_ms, sort</td><td>动作序列</td></tr>
+            <tr><td><b>scene_run</b></td><td>id, scene_id, trigger_type, status, started_at, finished_at</td><td>一次执行</td></tr>
+            <tr><td><b>scene_run_action</b></td><td>id, run_id, action_id, status, message, finished_at</td><td>逐动作结果</td></tr>
+            <tr><td><b>notification</b></td><td>id, user_id, type, title, body, read, created_at</td><td>消息/告警</td></tr>
+            <tr><td><b>provisioning_session</b></td><td>id, device_serial, user_id, family_id, status, token_hash, expires_at</td><td>配网会话，防重放</td></tr>
+            <tr><td><b>admin_user</b></td><td>id, email, password_hash, name, status, last_login_at</td><td>管理员</td></tr>
+            <tr><td><b>role / permission</b></td><td>role(id,name); permission(code,resource,action)</td><td>RBAC</td></tr>
+            <tr><td><b>audit_log</b></td><td>id, actor_type, actor_id, action, resource, resource_id, before_json, after_json, ip, created_at</td><td>审计</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="indexes">4. 索引与保留</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>关键索引</h3>
+          <ul class="small">
+            <li><code class="inline">telemetry(device_id, ts desc)</code></li>
+            <li><code class="inline">command(device_id, created_at desc)</code>、<code class="inline">command(cmd_id)</code> 唯一</li>
+            <li><code class="inline">device_binding(device_id) where unbound_at is null</code></li>
+            <li><code class="inline">scene_run(scene_id, started_at desc)</code></li>
+            <li><code class="inline">audit_log(actor_id, created_at desc)</code></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>保留策略</h3>
+          <ul class="small">
+            <li>遥测：演示保留 30 天，生产按天分区/时序库。</li>
+            <li>命令/场景执行：保留 180 天；审计至少 1 年。</li>
+            <li>图片/固件放对象存储，DB 只存 URL。</li>
+            <li>软删除：设备/家庭用 status，不物理删除。</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 id="rest">5. REST 约定</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>项</th><th>约定</th></tr></thead>
+          <tbody>
+            <tr><td>前缀</td><td><code class="inline">/api/v1</code></td></tr>
+            <tr><td>认证</td><td><code class="inline">Authorization: Bearer &lt;access_token&gt;</code>；刷新用 refresh token</td></tr>
+            <tr><td>响应</td><td><code class="inline">{ "ok": true, "data": ..., "requestId": "..." }</code></td></tr>
+            <tr><td>错误</td><td><code class="inline">{ "ok": false, "error": { "code": "DEVICE_NOT_FOUND", "message": "...", "details": {} }, "requestId": "..." }</code></td></tr>
+            <tr><td>分页</td><td><code class="inline">?page=1&amp;pageSize=20</code>；返回 <code class="inline">total/page/pageSize</code></td></tr>
+            <tr><td>幂等</td><td>命令接口要求 <code class="inline">Idempotency-Key</code> 或 <code class="inline">cmdId</code>；重复返回同一结果</td></tr>
+            <tr><td>时间</td><td>ISO 8601 / Unix ms；统一 UTC 存储，前端本地化</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>核心端点</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模块</th><th>方法/路径</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>Auth</td><td>POST /auth/wechat/login</td><td>code2session；dev 支持 mock code</td></tr>
+            <tr><td>Auth</td><td>POST /auth/admin/login</td><td>管理员登录</td></tr>
+            <tr><td>Auth</td><td>POST /auth/refresh</td><td>刷新 token</td></tr>
+            <tr><td>Family</td><td>GET/POST /families</td><td>我的家庭 / 创建</td></tr>
+            <tr><td>Family</td><td>POST /families/:id/members</td><td>邀请/加入</td></tr>
+            <tr><td>Home</td><td>GET/POST /homes</td><td>住宅</td></tr>
+            <tr><td>Room</td><td>GET/POST /homes/:id/rooms</td><td>房间</td></tr>
+            <tr><td>DeviceModel</td><td>GET/POST/PATCH /admin/device-models</td><td>型号/能力/命令元数据</td></tr>
+            <tr><td>Device</td><td>GET /devices?homeId=</td><td>设备列表（含最新状态）</td></tr>
+            <tr><td>Device</td><td>GET /devices/:id</td><td>设备详情/能力/状态</td></tr>
+            <tr><td>Device</td><td>PATCH /devices/:id</td><td>改名/房间</td></tr>
+            <tr><td>Provision</td><td>POST /provisioning/sessions</td><td>创建配网会话</td></tr>
+            <tr><td>Provision</td><td>POST /provisioning/sessions/:id/bind</td><td>绑定设备到账号/家庭</td></tr>
+            <tr><td>Command</td><td>POST /devices/:id/commands</td><td>下发命令（幂等）</td></tr>
+            <tr><td>Telemetry</td><td>GET /devices/:id/telemetry?from=&amp;to=</td><td>遥测查询</td></tr>
+            <tr><td>Scene</td><td>GET/POST/PATCH /scenes</td><td>场景 CRUD</td></tr>
+            <tr><td>Scene</td><td>POST /scenes/:id/run</td><td>执行场景</td></tr>
+            <tr><td>Scene</td><td>GET /scenes/:id/runs</td><td>执行记录</td></tr>
+            <tr><td>Admin</td><td>GET /admin/users, /admin/families, /admin/devices</td><td>运营查询</td></tr>
+            <tr><td>Admin</td><td>GET /admin/audit-logs</td><td>审计</td></tr>
+            <tr><td>Simulator</td><td>POST /admin/simulator/devices</td><td>创建虚拟设备</td></tr>
+            <tr><td>Simulator</td><td>POST /admin/simulator/devices/:id/telemetry</td><td>注入遥测</td></tr>
+            <tr><td>Simulator</td><td>POST /admin/simulator/devices/:id/disconnect</td><td>模拟断连</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="ws">6. WebSocket 事件</h2>
+      <p>连接：<code class="inline">wss://host/ws?token=&lt;access_token&gt;</code>；服务端校验 JWT 与家庭成员关系。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>事件</th><th>方向</th><th>载荷</th></tr></thead>
+          <tbody>
+            <tr><td>device.state</td><td>server → client</td><td><code class="inline">{ deviceId, online, state, updatedAt }</code></td></tr>
+            <tr><td>device.telemetry</td><td>server → client</td><td><code class="inline">{ deviceId, ts, metrics }</code></td></tr>
+            <tr><td>command.updated</td><td>server → client</td><td><code class="inline">{ commandId, status, error? }</code></td></tr>
+            <tr><td>scene.run.updated</td><td>server → client</td><td><code class="inline">{ runId, status, actions[] }</code></td></tr>
+            <tr><td>notification.created</td><td>server → client</td><td><code class="inline">{ id, type, title, body }</code></td></tr>
+            <tr><td>presence</td><td>client → server</td><td><code class="inline">{ homeId, page }</code>（在线态/订阅）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="mqtt">7. MQTT 主题</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>主题</th><th>方向</th><th>QoS</th><th>载荷</th></tr></thead>
+          <tbody>
+            <tr><td><code class="inline">device/{deviceId}/telemetry</code></td><td>设备 → 服务端</td><td>0/1</td><td><code class="inline">{ v, deviceId, ts, metrics }</code></td></tr>
+            <tr><td><code class="inline">device/{deviceId}/state</code></td><td>设备 → 服务端</td><td>1</td><td>retained 最新状态</td></tr>
+            <tr><td><code class="inline">device/{deviceId}/command</code></td><td>服务端 → 设备</td><td>1</td><td><code class="inline">{ v, cmdId, capability, name, params, ts }</code></td></tr>
+            <tr><td><code class="inline">device/{deviceId}/ack</code></td><td>设备 → 服务端</td><td>1</td><td><code class="inline">{ v, cmdId, status, error? , ts }</code></td></tr>
+            <tr><td><code class="inline">device/{deviceId}/presence</code></td><td>设备 ↔ 服务端</td><td>1</td><td><code class="inline">{ online, ts }</code> + 遗嘱消息</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">QoS 1 用于命令/回执；遥测可 QoS 0；retained 只用于 state/presence，不用于命令，避免重放。</p>
+
+      <h2 id="errors">8. 错误码</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>code</th><th>HTTP</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>AUTH_REQUIRED</td><td>401</td><td>未登录/token 过期</td></tr>
+            <tr><td>FORBIDDEN</td><td>403</td><td>无家庭/角色权限</td></tr>
+            <tr><td>FAMILY_NOT_FOUND</td><td>404</td><td>家庭不存在或无权访问</td></tr>
+            <tr><td>DEVICE_NOT_FOUND</td><td>404</td><td>设备不存在/未绑定</td></tr>
+            <tr><td>DEVICE_OFFLINE</td><td>409</td><td>设备离线，命令未下发</td></tr>
+            <tr><td>COMMAND_TIMEOUT</td><td>504</td><td>设备未在时限内回执</td></tr>
+            <tr><td>DUPLICATE_COMMAND</td><td>200</td><td>幂等命中，返回原结果</td></tr>
+            <tr><td>PROVISION_EXPIRED</td><td>410</td><td>配网会话过期</td></tr>
+            <tr><td>PROVISION_TOKEN_INVALID</td><td>403</td><td>配网 token 错误</td></tr>
+            <tr><td>SCENE_RUNNING</td><td>409</td><td>场景正在执行</td></tr>
+            <tr><td>VALIDATION_ERROR</td><td>422</td><td>参数校验失败</td></tr>
+            <tr><td>RATE_LIMITED</td><td>429</td><td>触发限流</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="acceptance">9. 验收</h2>
+      <ul class="checklist">
+        <li>添加设备后，<code class="inline">device</code> + <code class="inline">device_binding</code> 可查，归属正确</li>
+        <li>命令重复提交同一 cmdId 不重复执行</li>
+        <li>遥测落库并按时间索引，WS 能实时收到</li>
+        <li>场景执行有 run 与逐 action 记录</li>
+        <li>管理员越权访问返回 403 并留审计</li>
+        <li>OpenAPI 与 contracts 一致，示例可跑</li>
+      </ul>
+
+      <div class="page-nav">
+        <a class="prev" href="01-总体架构与技术选型.html">← 上一份<b>01 · 总体架构与技术选型</b></a>
+        <a class="next" href="03-账号权限与家庭体系.html">下一份<b>03 · 账号权限与家庭体系 →</b></a>
+      </div>
+
+    </main>
+    <footer class="footer">
+      <span><b>02 · 数据模型与接口契约</b></span>
+      <span>ERD、REST、WS、MQTT、错误码</span>
+    </footer>
+  </div>
+</div>
+<script src="assets/plan.js"></script>
+</body>
+</html>

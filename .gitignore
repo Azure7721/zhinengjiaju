@@ -1,0 +1,27 @@
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+dev.db
+dev.db-journal
+*.db
+*.db-journal
+.DS_Store
+Thumbs.db
+*.log
+.vite/
+.vitest/
+apps/miniapp/dist/
+apps/admin/dist/
+infra/data/
+
+# 大文件/隐私/冗余资产（不入库）
+第二版.zip
+第二版/*.pdf
+figma-node-2-399.json
+.tmp_*.json
+.tmp_*.txt
